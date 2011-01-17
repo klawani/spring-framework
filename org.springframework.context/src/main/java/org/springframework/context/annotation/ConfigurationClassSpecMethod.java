@@ -21,6 +21,9 @@ import org.springframework.core.type.MethodMetadata;
 /**
  * Represents a {@link Configuration} class method marked with the {@link SpecMethod} annotation.
  *
+ * TODO: unify with {@link ConfigurationClassMethod} through a supertype.  Rename CCM to CCBM and make the supertype
+ * CCM or ACCM.
+ *
  * @author Chris Beams
  * @since 3.1
  */

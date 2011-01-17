@@ -29,7 +29,7 @@ package org.springframework.context;
  * object, then, is a way of representing this configuration information independent of its
  * original source format, be it XML, annotations, or otherwise.
  *
- * <p>A {@link SpecificationCreator} is used to read from the original XML or annotation
+ * <p>A {@link SpecificationCreator} may be used to read from the original XML or annotation
  * source and create a {@code Specification} object out of it. A {@link SpecificationExecutor}
  * is used to read and act upon the {@code Specification}; this is where the real work happens.
  * In the case of component scanning as above, it is within a {@code SpecificationExecutor} that

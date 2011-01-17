@@ -60,14 +60,25 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * with the container as necessary.
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
-		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator(parserContext);
+		TxAnnotationDrivenElementSpecificationCreator specCreator =
+			new TxAnnotationDrivenElementSpecificationCreator(parserContext);
 		TxAnnotationDriven spec = specCreator.createFrom(element);
 		TxAnnotationDrivenSpecificationExecutor specExecutor = new TxAnnotationDrivenSpecificationExecutor();
+		specExecutor.execute(spec, createExecutorContext(parserContext));
+		return null;
+	}
+
+
+	/**
+	 * Adapt the given ParserContext instance into an ExecutorContext.
+	 *
+	 * TODO: consider unifying the two through a superinterface.
+	 */
+	private ExecutorContext createExecutorContext(ParserContext parserContext) {
 		ExecutorContext executorContext = new ExecutorContext();
 		executorContext.setRegistry(parserContext.getRegistry());
 		executorContext.setRegistrar(parserContext);
-		specExecutor.execute(spec, executorContext);
-		return null;
+		return executorContext;
 	}
 
 }

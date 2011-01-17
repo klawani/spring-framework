@@ -49,7 +49,6 @@ class TxAnnotationDrivenSpecificationExecutor extends AbstractSpecificationExecu
 	private static final String TRANSACTION_ASPECT_CLASS_NAME =
 			"org.springframework.transaction.aspectj.AnnotationTransactionAspect";
 
-	public TxAnnotationDrivenSpecificationExecutor() { }
 
 	@Override
 	public void doExecute(TxAnnotationDriven txSpec, ExecutorContext executorContext) {

@@ -346,7 +346,7 @@ class ConfigurationClassBeanDefinitionReader {
 		Specification spec;
 		try {
 			method.setAccessible(true);
-			Constructor<?> noArgCtor = declaringClass.getConstructor();
+			Constructor<?> noArgCtor = declaringClass.getDeclaredConstructor();
 			noArgCtor.setAccessible(true);
 			Object newInstance = noArgCtor.newInstance();
 			spec = (Specification) method.invoke(newInstance);

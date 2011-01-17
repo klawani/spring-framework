@@ -23,7 +23,7 @@ public class DefaultSpecificationExecutorResolver implements SpecificationExecut
 	public SpecificationExecutor resolve(Class<? extends Specification> specType) {
 		try {
 			Class<?> specificationExecutorClass = Class.forName("org.springframework.transaction.config.TxAnnotationDrivenSpecificationExecutor");
-			Constructor<?> noArgCtor = specificationExecutorClass.getConstructor();
+			Constructor<?> noArgCtor = specificationExecutorClass.getDeclaredConstructor();
 			noArgCtor.setAccessible(true);
 			return (SpecificationExecutor) noArgCtor.newInstance();
 		} catch (Exception ex) {
