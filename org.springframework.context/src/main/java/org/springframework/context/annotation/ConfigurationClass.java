@@ -52,6 +52,7 @@ final class ConfigurationClass {
 	private final Map<String, Class<?>> importedResources = new LinkedHashMap<String, Class<?>>();
 
 	private final Set<ConfigurationClassMethod> methods = new LinkedHashSet<ConfigurationClassMethod>();
+	private final Set<ConfigurationClassSpecMethod> specMethods = new LinkedHashSet<ConfigurationClassSpecMethod>();
 
 	private String beanName;
 
@@ -97,6 +98,14 @@ final class ConfigurationClass {
 		return this.methods;
 	}
 
+	public void addSpecMethod(ConfigurationClassSpecMethod method) {
+		this.specMethods.add(method);
+	}
+
+	public Set<ConfigurationClassSpecMethod> getSpecMethods() {
+		return this.specMethods;
+	}
+	
 	public void addImportedResource(String importedResource, Class<?> readerClass) {
 		this.importedResources.put(importedResource, readerClass);
 	}
@@ -175,5 +184,6 @@ final class ConfigurationClass {
 					getSimpleName(), count, methodName), new Location(getResource(), getMetadata()));
 		}
 	}
-	
+
+
 }

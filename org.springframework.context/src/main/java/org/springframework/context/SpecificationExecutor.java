@@ -30,12 +30,17 @@ package org.springframework.context;
  * @see org.springframework.context.annotation.AnnotationSpecificationCreator
  * @see org.springframework.context.annotation.ComponentScanSpecificationExecutor
  */
-public interface SpecificationExecutor<S extends Specification> {
+public interface SpecificationExecutor {
+
+	/**
+	 * Return whether this executor is capable of executing the given specification.
+	 */
+	boolean accepts(Specification spec);
 
 	/**
 	 * Execute the given specification, usually resulting in registration
 	 * of bean definitions against a bean factory.
 	 */
-	void execute(S spec);
+	void execute(Specification spec);
 
 }

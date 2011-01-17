@@ -16,6 +16,7 @@
 
 package org.springframework.context;
 
+import org.springframework.core.GenericTypeResolver;
 import org.springframework.util.Assert;
 
 /**
@@ -24,7 +25,12 @@ import org.springframework.util.Assert;
  * @author Chris Beams
  * @since 3.1
  */
-public abstract class AbstractSpecificationExecutor<S extends Specification> implements SpecificationExecutor<S> {
+public abstract class AbstractSpecificationExecutor<S extends Specification> implements SpecificationExecutor {
+
+	public boolean accepts(Specification spec) {
+		Class<?> typeArg = GenericTypeResolver.resolveTypeArgument(this.getClass(), AbstractSpecificationExecutor.class);
+		return typeArg.equals(spec.getClass());
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -33,10 +39,12 @@ public abstract class AbstractSpecificationExecutor<S extends Specification> imp
 	 * method.
 	 * @throws InvalidSpecificationException if the given specification has has errors
 	 */
-	public final void execute(S specification) throws InvalidSpecificationException {
-		Assert.notNull(specification, "Specification must not be null");
-		specification.validate();
-		doExecute(specification);
+	@SuppressWarnings("unchecked")
+	public final void execute(Specification spec) throws InvalidSpecificationException {
+		Assert.notNull(spec, "Specification must not be null");
+		Assert.isTrue(this.accepts(spec), "Specification cannot be executed by this executor");
+		spec.validate();
+		doExecute((S)spec);
 	}
 
 	/**
@@ -45,4 +53,5 @@ public abstract class AbstractSpecificationExecutor<S extends Specification> imp
 	 * @param specification the {@linkplain Specification#validate() validated} specification
 	 */
 	public abstract void doExecute(S specification);
+
 }

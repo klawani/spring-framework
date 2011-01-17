@@ -16,54 +16,59 @@
 
 package org.springframework.transaction.annotation;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
+import java.util.Map;
+
 import org.junit.Test;
+import org.springframework.aop.support.AopUtils;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ProxyType;
+import org.springframework.context.annotation.SpecMethod;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.CallCountingTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.AnnotationTransactionNamespaceHandlerTests.TransactionalTestBean;
 import org.springframework.transaction.config.TxAnnotationDriven;
 
-public class AnnotationDrivenTxConfigurationClassTests {
+/**
+ * Integration tests for {@link TxAnnotationDriven} support within @Configuration
+ * classes. Adapted from original tx: namespace tests at
+ * {@link AnnotationTransactionNamespaceHandlerTests}.
+ * 
+ * @author Chris Beams
+ * @since 3.1
+ */
+public class TxAnnotationDrivenConfigurationClassTests {
 	@Test
-	public void test() {
-		
+	public void isProxy() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(TxConfig.class);
+		TransactionalTestBean bean = ctx.getBean(TransactionalTestBean.class);
+		assertThat("testBean is not a proxy", AopUtils.isAopProxy(bean), is(true));
+		Map<?,?> services = ctx.getBeansWithAnnotation(Service.class);
+		assertThat("Stereotype annotation not visible", services.containsKey("testBean"), is(true));
 	}
 }
 
 @Configuration
 class TxConfig {
 
-	/*
-	@Specification
-	public AnnotationDrivenTxSpecification txAnnotationDriven1() {
-		AnnotationDrivenTxSpecification spec = new AnnotationDrivenTxSpecification();
-		spec.setOrder(0);
-		spec.setTransactionManager(txManager());
-		spec.setProxyMode(ProxyMode.PROXY);
-		spec.setProxyTargetClass(false);
-		return spec;
-	}
-	*/
-
-	@Specification
-	public TxAnnotationDriven txAnnotationDriven2() {
+	@SpecMethod
+	public TxAnnotationDriven tx() {
 		return new TxAnnotationDriven(this.txManager()).order(0).proxyType(ProxyType.SPRINGAOP).proxyTargetClass(false);
 	}
 
-	/*
-	@Specification
-	public AnnotationDrivenTxSpecification txAnnotationDriven3() {
-		return new AnnotationDrivenTxSpecification().transactionManagerName("txManager").order(0).proxyType(ProxyType.SPRINGAOP).proxyTargetClass(false);
+	@Bean
+	public TransactionalTestBean testBean() {
+		return new TransactionalTestBean();
 	}
-	*/
 
 	@Bean
 	public PlatformTransactionManager txManager() {
 		return new CallCountingTransactionManager();
 	}
 
-}
-
-@interface Specification {
 }

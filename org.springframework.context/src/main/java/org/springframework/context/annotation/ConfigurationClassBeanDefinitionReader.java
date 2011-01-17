@@ -42,6 +42,9 @@ import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.context.DefaultSpecificationExecutorResolver;
+import org.springframework.context.SpecificationExecutor;
+import org.springframework.context.SpecificationExecutorResolver;
 import org.springframework.core.Conventions;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.Environment;
@@ -56,11 +59,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * Reads a given fully-populated configuration model, registering bean definitions
- * with the given {@link BeanDefinitionRegistry} based on its contents.
+ * Reads a given fully-populated set of ConfigurationClass instances, registering bean
+ * definitions with the given {@link BeanDefinitionRegistry} based on its contents.
  *
  * <p>This class was modeled after the {@link BeanDefinitionReader} hierarchy, but does
- * not implement/extend any of its artifacts as a configuration model is not a {@link Resource}.
+ * not implement/extend any of its artifacts as a set of configuration classes is not a
+ * {@link Resource}.
  *
  * @author Chris Beams
  * @author Juergen Hoeller
@@ -128,8 +132,11 @@ class ConfigurationClassBeanDefinitionReader {
 			this.componentScanSpecExecutor.execute(this.componentScanSpecCreator.createFrom(configClass.getMetadata()));
 		}
 		doLoadBeanDefinitionForConfigurationClassIfNecessary(configClass);
-		for (ConfigurationClassMethod method : configClass.getMethods()) {
-			loadBeanDefinitionsForModelMethod(method);
+		for (ConfigurationClassMethod beanMethod : configClass.getMethods()) {
+			loadBeanDefinitionsForBeanMethod(beanMethod);
+		}
+		for (ConfigurationClassSpecMethod specMethod : configClass.getSpecMethods()) {
+			loadBeanDefinitionsForSpecMethod(specMethod);
 		}
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
 	}
@@ -171,9 +178,9 @@ class ConfigurationClassBeanDefinitionReader {
 	 * Read a particular {@link ConfigurationClassMethod}, registering bean definitions
 	 * with the BeanDefinitionRegistry based on its contents.
 	 */
-	private void loadBeanDefinitionsForModelMethod(ConfigurationClassMethod method) {
-		ConfigurationClass configClass = method.getConfigurationClass();
-		MethodMetadata metadata = method.getMetadata();
+	private void loadBeanDefinitionsForBeanMethod(ConfigurationClassMethod beanMethod) {
+		ConfigurationClass configClass = beanMethod.getConfigurationClass();
+		MethodMetadata metadata = beanMethod.getMetadata();
 
 		RootBeanDefinition beanDef = new ConfigurationClassBeanDefinition(configClass);
 		beanDef.setResource(configClass.getResource());
@@ -186,7 +193,7 @@ class ConfigurationClassBeanDefinitionReader {
 		// consider name and any aliases
 		Map<String, Object> beanAttributes = metadata.getAnnotationAttributes(Bean.class.getName());
 		List<String> names = new ArrayList<String>(Arrays.asList((String[]) beanAttributes.get("name")));
-		String beanName = (names.size() > 0 ? names.remove(0) : method.getMetadata().getMethodName());
+		String beanName = (names.size() > 0 ? names.remove(0) : beanMethod.getMetadata().getMethodName());
 		for (String alias : names) {
 			this.registry.registerAlias(beanName, alias);
 		}
@@ -200,7 +207,7 @@ class ConfigurationClassBeanDefinitionReader {
 				// overriding is legal, return immediately
 				if (logger.isDebugEnabled()) {
 					logger.debug(String.format("Skipping loading bean definition for %s: a definition for bean " +
-							"'%s' already exists. This is likely due to an override in XML.", method, beanName));
+							"'%s' already exists. This is likely due to an override in XML.", beanMethod, beanName));
 				}
 				return;
 			}
@@ -265,7 +272,42 @@ class ConfigurationClassBeanDefinitionReader {
 
 		registry.registerBeanDefinition(beanName, beanDefToRegister);
 	}
-	
+
+	/**
+	 * TODO SPR-7420: this method invokes user-supplied code, which is not going to fly for STS
+	 * consider introducing some kind of check to see if we're in a tooling context and make guesses
+	 * based on return type rather than actually invoking the method and processing the the specification
+	 * object that returns.
+	 */
+	private void loadBeanDefinitionsForSpecMethod(ConfigurationClassSpecMethod specMethod) {
+		// get the return type
+		// ensure a legal return type (assignable to Specification), raise error otherwise
+		// get the classname.methodname
+		// reflectively invoke that method
+		// offer the returned specification object to all registered SpecificationExecutors
+		/*
+		SpecificationExecutorResolver resolver = createDefaultSpecificationExecutorResolver();
+		SpecificationExecutor executor = resolver.resolve(specType);
+		if (executor == null) {
+			//error("Unable to locate Spring NamespaceHandler for XML schema namespace [" + namespaceUri + "]", ele);
+			throw new IllegalArgumentException("Unable to locate Spring SpecificationExecutor for Specification type [" + specType + "]");
+		}
+		executor.execute(spec);
+		*/
+		/*
+		for (SpecificationExecutor specExecutor : registeredSpecExecutors) {
+			if (specExecutor.accepts(spec)) {
+				specExecutor.execute(spec);
+			}
+		}
+		*/
+	}
+
+	protected SpecificationExecutorResolver createDefaultSpecificationExecutorResolver() {
+		return new DefaultSpecificationExecutorResolver();
+	}
+
+
 	private void loadBeanDefinitionsFromImportedResources(Map<String, Class<?>> importedResources) {
 		Map<Class<?>, BeanDefinitionReader> readerInstanceCache = new HashMap<Class<?>, BeanDefinitionReader>();
 		for (Map.Entry<String, Class<?>> entry : importedResources.entrySet()) {
