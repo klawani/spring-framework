@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2009 the original author or authors.
+ * Copyright 2002-2011 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,21 @@
 
 package org.springframework.transaction.config;
 
-import org.w3c.dom.Element;
-
 import org.springframework.aop.config.AopNamespaceUtils;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentRegistrar;
 import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.context.annotation.ProxyType;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
+import org.w3c.dom.Element;
 
 /**
  * {@link org.springframework.beans.factory.xml.BeanDefinitionParser}
@@ -69,31 +71,32 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * with the container as necessary.
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
-		String mode = element.getAttribute("mode");
-		if ("aspectj".equals(mode)) {
+		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator();
+		TxAnnotationDriven spec = specCreator.createFrom(element);
+		//new TxAnnotationDrivenSpecificationExecutor().execute(spec);
+		if (spec.proxyType() == ProxyType.ASPECTJ) {
 			// mode="aspectj"
-			registerTransactionAspect(element, parserContext);
+			registerTransactionAspect(spec, parserContext.getRegistry(), parserContext);
 		}
 		else {
 			// mode="proxy"
-			AopAutoProxyConfigurer.configureAutoProxyCreator(element, parserContext);
+			AopAutoProxyConfigurer.configureAutoProxyCreator(parserContext.getRegistry(), spec, element, parserContext);
 		}
 		return null;
 	}
 
-	private void registerTransactionAspect(Element element, ParserContext parserContext) {
-		if (!parserContext.getRegistry().containsBeanDefinition(TRANSACTION_ASPECT_BEAN_NAME)) {
+	private void registerTransactionAspect(TxAnnotationDriven spec, BeanDefinitionRegistry registry, ComponentRegistrar registrar) {
+		if (!registry.containsBeanDefinition(TRANSACTION_ASPECT_BEAN_NAME)) {
 			RootBeanDefinition def = new RootBeanDefinition();
 			def.setBeanClassName(TRANSACTION_ASPECT_CLASS_NAME);
 			def.setFactoryMethodName("aspectOf");
-			registerTransactionManager(element, def);
-			parserContext.registerBeanComponent(new BeanComponentDefinition(def, TRANSACTION_ASPECT_BEAN_NAME));
+			registerTransactionManager(spec, def);
+			registrar.registerBeanComponent(new BeanComponentDefinition(def, TRANSACTION_ASPECT_BEAN_NAME));
 		}
 	}
 
-	private static void registerTransactionManager(Element element, BeanDefinition def) {
-		def.getPropertyValues().add("transactionManagerBeanName",
-				TxNamespaceHandler.getTransactionManagerName(element));
+	private static void registerTransactionManager(TxAnnotationDriven spec, BeanDefinition def) {
+		def.getPropertyValues().add("transactionManagerBeanName", spec.transactionManagerName());
 	}
 
 
@@ -102,8 +105,8 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	private static class AopAutoProxyConfigurer {
 
-		public static void configureAutoProxyCreator(Element element, ParserContext parserContext) {
-			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(parserContext, element);
+		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Element element, ParserContext parserContext) {
+			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(parserContext.getRegistry(), parserContext, element, spec);
 
 			if (!parserContext.getRegistry().containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {
 				Object eleSource = parserContext.extractSource(element);
@@ -118,7 +121,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				RootBeanDefinition interceptorDef = new RootBeanDefinition(TransactionInterceptor.class);
 				interceptorDef.setSource(eleSource);
 				interceptorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-				registerTransactionManager(element, interceptorDef);
+				registerTransactionManager(spec, interceptorDef);
 				interceptorDef.getPropertyValues().add("transactionAttributeSource", new RuntimeBeanReference(sourceName));
 				String interceptorName = parserContext.getReaderContext().registerWithGeneratedName(interceptorDef);
 
@@ -128,8 +131,8 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				advisorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 				advisorDef.getPropertyValues().add("transactionAttributeSource", new RuntimeBeanReference(sourceName));
 				advisorDef.getPropertyValues().add("adviceBeanName", interceptorName);
-				if (element.hasAttribute("order")) {
-					advisorDef.getPropertyValues().add("order", element.getAttribute("order"));
+				if (spec.order() != null) {
+					advisorDef.getPropertyValues().add("order", spec.order());
 				}
 				parserContext.getRegistry().registerBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME, advisorDef);
 
@@ -141,5 +144,4 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 			}
 		}
 	}
-
 }

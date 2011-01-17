@@ -16,12 +16,12 @@
 
 package org.springframework.aop.config;
 
-import org.w3c.dom.Element;
-
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentRegistrar;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.xml.ParserContext;
+import org.w3c.dom.Element;
 
 /**
  * Utility class for handling registration of auto-proxy creators used internally
@@ -52,12 +52,25 @@ public abstract class AopNamespaceUtils {
 	private static final String EXPOSE_PROXY_ATTRIBUTE = "expose-proxy";
 
 
+	/**
+	 * @deprecated in favor of {@link #registerAutoProxyCreatorIfNecessary(BeanDefinitionRegistry, ParserContext, Object, ProxySpecification)}
+	 */
+	@Deprecated
 	public static void registerAutoProxyCreatorIfNecessary(
 			ParserContext parserContext, Element sourceElement) {
 
 		BeanDefinition beanDefinition = AopConfigUtils.registerAutoProxyCreatorIfNecessary(
 				parserContext.getRegistry(), parserContext.extractSource(sourceElement));
 		useClassProxyingIfNecessary(parserContext.getRegistry(), sourceElement);
+		registerComponentIfNecessary(beanDefinition, parserContext);
+	}
+
+	public static void registerAutoProxyCreatorIfNecessary(
+			BeanDefinitionRegistry registry, ParserContext parserContext, Object source, ProxySpecification proxySpec) {
+
+		BeanDefinition beanDefinition =
+			AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry, source);
+		useClassProxyingIfNecessary(registry, proxySpec);
 		registerComponentIfNecessary(beanDefinition, parserContext);
 	}
 
@@ -114,11 +127,20 @@ public abstract class AopNamespaceUtils {
 		}
 	}
 
-	private static void registerComponentIfNecessary(BeanDefinition beanDefinition, ParserContext parserContext) {
+	private static void useClassProxyingIfNecessary(BeanDefinitionRegistry registry, ProxySpecification proxySpec) {
+		if (proxySpec.proxyTargetClass()) {
+			AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
+		}
+		if (proxySpec.exposeProxy()) {
+			AopConfigUtils.forceAutoProxyCreatorToExposeProxy(registry);
+		}
+	}
+
+	private static void registerComponentIfNecessary(BeanDefinition beanDefinition, ComponentRegistrar componentRegistrar) {
 		if (beanDefinition != null) {
 			BeanComponentDefinition componentDefinition =
 					new BeanComponentDefinition(beanDefinition, AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME);
-			parserContext.registerComponent(componentDefinition);
+			componentRegistrar.registerComponent(componentDefinition);
 		}
 	}
 
