@@ -32,6 +32,8 @@ public class TxAnnotationDriven implements Specification, ProxySpecification {
 	private boolean proxyTargetClass = false;
 	private ProxyType proxyType = ProxyType.SPRINGAOP;
 	private Boolean exposeProxy;
+	private Object source;
+	private String sourceName;
 
 	public TxAnnotationDriven(String txManagerName) {
 		this.txManagerName = txManagerName;
@@ -85,7 +87,23 @@ public class TxAnnotationDriven implements Specification, ProxySpecification {
 		return this.order;
 	}
 
+	public void setSource(Object source) {
+		this.source = source;
+	}
+
+	public void setSourceName(String sourceName) {
+		this.sourceName = sourceName;
+	}
+
 	public void validate() throws InvalidSpecificationException {
+	}
+
+	public Object getSource() {
+		return this.source;
+	}
+
+	public String getSourceName() {
+		return this.sourceName;
 	}
 
 }

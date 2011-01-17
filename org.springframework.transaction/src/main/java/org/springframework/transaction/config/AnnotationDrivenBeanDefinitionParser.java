@@ -72,7 +72,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
 		BeanDefinitionRegistry registry = parserContext.getRegistry();
-		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator();
+		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator(parserContext);
 		TxAnnotationDriven spec = specCreator.createFrom(element);
 		//new TxAnnotationDrivenSpecificationExecutor().execute(spec);
 		if (spec.proxyType() == ProxyType.ASPECTJ) {
@@ -81,9 +81,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 		}
 		else {
 			// mode="proxy"
-			Object eleSource = parserContext.extractSource(element);
-			String eleName = element.getTagName();
-			AopAutoProxyConfigurer.configureAutoProxyCreator(registry, spec, eleSource, eleName, parserContext);
+			AopAutoProxyConfigurer.configureAutoProxyCreator(registry, spec, parserContext);
 		}
 		return null;
 	}
@@ -107,7 +105,9 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	private static class AopAutoProxyConfigurer {
 
-		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Object eleSource, String eleName, ComponentRegistrar registrar) {
+		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, ComponentRegistrar registrar) {
+			Object eleSource = spec.getSource();
+			String eleName = spec.getSourceName();
 			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(registry, registrar, eleSource, spec);
 
 			if (!registry.containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {

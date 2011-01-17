@@ -18,14 +18,21 @@ package org.springframework.transaction.config;
 
 import static org.springframework.transaction.config.TxNamespaceHandler.getTransactionManagerName;
 
+import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.context.annotation.ProxyType;
 import org.springframework.context.xml.XmlElementSpecificationCreator;
 import org.w3c.dom.Element;
 
 public class TxAnnotationDrivenElementSpecificationCreator implements XmlElementSpecificationCreator {
 
+	private final ParserContext parserContext;
+
+	public TxAnnotationDrivenElementSpecificationCreator(ParserContext parserContext) {
+		this.parserContext = parserContext;
+	}
+
 	public TxAnnotationDriven createFrom(Element element) {
-		return new TxAnnotationDriven(getTransactionManagerName(element))
+		TxAnnotationDriven spec = new TxAnnotationDriven(getTransactionManagerName(element))
 			.proxyType(element.getAttribute("mode").equals("aspectj") ?
 					ProxyType.ASPECTJ :
 					ProxyType.SPRINGAOP)
@@ -36,6 +43,11 @@ public class TxAnnotationDrivenElementSpecificationCreator implements XmlElement
 					Boolean.valueOf(element.getAttribute("proxy-target-class")))
 			.exposeProxy(
 					Boolean.valueOf(element.getAttribute("expose-proxy")));
+
+		spec.setSource(this.parserContext.extractSource(element));
+		spec.setSourceName(element.getTagName());
+
+		return spec;
 	}
 
 }
