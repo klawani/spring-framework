@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.ExecutorContext;
 import org.springframework.context.InvalidSpecificationException;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.mock.env.MockEnvironment;
@@ -34,13 +35,15 @@ import org.springframework.mock.env.MockEnvironment;
  */
 public class ComponentScanSpecificationExecutorTests {
 	private ComponentScanSpecificationExecutor executor;
+	private ExecutorContext executorContext;
 
 	@Before
 	public void setUp() {
-		this.executor = new ComponentScanSpecificationExecutor(
-				new DefaultListableBeanFactory(),
-				new DefaultResourceLoader(),
-				new MockEnvironment());
+		this.executor = new ComponentScanSpecificationExecutor();
+		this.executorContext = new ExecutorContext();
+		this.executorContext.setRegistry(new DefaultListableBeanFactory());
+		this.executorContext.setResourceLoader(new DefaultResourceLoader());
+		this.executorContext.setEnvironment(new MockEnvironment());
 	}
 
 	@Test
@@ -48,7 +51,7 @@ public class ComponentScanSpecificationExecutorTests {
 		ComponentScanSpecification spec = new ComponentScanSpecification();
 		spec.addBasePackage("example.scannable");
 
-		this.executor.execute(spec);
+		this.executor.execute(spec, this.executorContext);
 
 		boolean targetBeanFound = false;
 		for (BeanDefinitionHolder beanDefHolder : this.executor.getScannedBeans()) {
@@ -63,7 +66,7 @@ public class ComponentScanSpecificationExecutorTests {
 	@Test(expected=InvalidSpecificationException.class)
 	public void invalidSpec() {
 		ComponentScanSpecification spec = new ComponentScanSpecification();
-		this.executor.execute(spec);
+		this.executor.execute(spec, this.executorContext);
 	}
 
 }

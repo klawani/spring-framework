@@ -55,6 +55,7 @@ public class TxAnnotationDrivenConfigurationClassTests {
 
 @Configuration
 class TxConfig {
+	public TxConfig() { }
 
 	@SpecMethod
 	public TxAnnotationDriven tx() {

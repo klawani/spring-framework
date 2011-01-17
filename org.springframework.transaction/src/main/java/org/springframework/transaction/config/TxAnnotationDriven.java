@@ -18,11 +18,12 @@ package org.springframework.transaction.config;
 
 import org.springframework.aop.config.ProxySpecification;
 import org.springframework.context.InvalidSpecificationException;
+import org.springframework.context.SourceAwareSpecification;
 import org.springframework.context.Specification;
 import org.springframework.context.annotation.ProxyType;
 import org.springframework.transaction.PlatformTransactionManager;
 
-public class TxAnnotationDriven implements Specification, ProxySpecification {
+public class TxAnnotationDriven implements Specification, ProxySpecification, SourceAwareSpecification {
 
 	private PlatformTransactionManager txManager;
 	private String txManagerName;
@@ -31,7 +32,7 @@ public class TxAnnotationDriven implements Specification, ProxySpecification {
 
 	private boolean proxyTargetClass = false;
 	private ProxyType proxyType = ProxyType.SPRINGAOP;
-	private Boolean exposeProxy;
+	private Boolean exposeProxy = false;
 	private Object source;
 	private String sourceName;
 
@@ -91,19 +92,19 @@ public class TxAnnotationDriven implements Specification, ProxySpecification {
 		this.source = source;
 	}
 
-	public void setSourceName(String sourceName) {
-		this.sourceName = sourceName;
-	}
-
-	public void validate() throws InvalidSpecificationException {
-	}
-
 	public Object getSource() {
 		return this.source;
 	}
 
+	public void setSourceName(String sourceName) {
+		this.sourceName = sourceName;
+	}
+
 	public String getSourceName() {
 		return this.sourceName;
+	}
+
+	public void validate() throws InvalidSpecificationException {
 	}
 
 }

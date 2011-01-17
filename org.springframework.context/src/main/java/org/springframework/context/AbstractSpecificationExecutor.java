@@ -40,11 +40,12 @@ public abstract class AbstractSpecificationExecutor<S extends Specification> imp
 	 * @throws InvalidSpecificationException if the given specification has has errors
 	 */
 	@SuppressWarnings("unchecked")
-	public final void execute(Specification spec) throws InvalidSpecificationException {
+	public final void execute(Specification spec, ExecutorContext executorContext) throws InvalidSpecificationException {
 		Assert.notNull(spec, "Specification must not be null");
+		Assert.notNull(spec, "ExecutorContext must not be null");
 		Assert.isTrue(this.accepts(spec), "Specification cannot be executed by this executor");
 		spec.validate();
-		doExecute((S)spec);
+		doExecute((S)spec, executorContext);
 	}
 
 	/**
@@ -52,6 +53,6 @@ public abstract class AbstractSpecificationExecutor<S extends Specification> imp
 	 * against a bean factory.
 	 * @param specification the {@linkplain Specification#validate() validated} specification
 	 */
-	public abstract void doExecute(S specification);
+	public abstract void doExecute(S specification, ExecutorContext executorContext);
 
 }

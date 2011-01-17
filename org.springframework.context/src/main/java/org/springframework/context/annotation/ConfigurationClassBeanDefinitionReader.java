@@ -17,6 +17,8 @@
 package org.springframework.context.annotation;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +34,10 @@ import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentRegistrar;
+import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
 import org.springframework.beans.factory.parsing.Location;
 import org.springframework.beans.factory.parsing.Problem;
 import org.springframework.beans.factory.parsing.ProblemReporter;
@@ -40,9 +46,13 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionReader;
 import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.DefaultSpecificationExecutorResolver;
+import org.springframework.context.ExecutorContext;
+import org.springframework.context.SourceAwareSpecification;
+import org.springframework.context.Specification;
 import org.springframework.context.SpecificationExecutor;
 import org.springframework.context.SpecificationExecutorResolver;
 import org.springframework.core.Conventions;
@@ -56,6 +66,7 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -94,13 +105,15 @@ class ConfigurationClassBeanDefinitionReader {
 
 	private final ComponentScanSpecificationExecutor componentScanSpecExecutor;
 
+	private ExecutorContext executorContext;
+
 	/**
 	 * Create a new {@link ConfigurationClassBeanDefinitionReader} instance that will be used
 	 * to populate the given {@link BeanDefinitionRegistry}.
 	 * @param problemReporter 
 	 * @param metadataReaderFactory 
 	 */
-	public ConfigurationClassBeanDefinitionReader(BeanDefinitionRegistry registry, SourceExtractor sourceExtractor,
+	public ConfigurationClassBeanDefinitionReader(final BeanDefinitionRegistry registry, SourceExtractor sourceExtractor,
 			ProblemReporter problemReporter, MetadataReaderFactory metadataReaderFactory,
 			ResourceLoader resourceLoader, Environment environment) {
 
@@ -109,7 +122,28 @@ class ConfigurationClassBeanDefinitionReader {
 		this.problemReporter = problemReporter;
 		this.metadataReaderFactory = metadataReaderFactory;
 		this.componentScanSpecCreator = new ComponentScanAnnotationSpecificationCreator(this.problemReporter);
-		this.componentScanSpecExecutor = new ComponentScanSpecificationExecutor(this.registry, resourceLoader, environment);
+		this.componentScanSpecExecutor = new ComponentScanSpecificationExecutor();
+		this.executorContext = new ExecutorContext();
+		this.executorContext.setRegistry(registry);
+		this.executorContext.setRegistrar(new ComponentRegistrar() {
+			public String registerWithGeneratedName(BeanDefinition beanDefinition) {
+				String name = new DefaultBeanNameGenerator().generateBeanName(beanDefinition, registry);
+				registry.registerBeanDefinition(name, beanDefinition);
+				System.out
+						.println("ConfigurationClassBeanDefinitionReader.ConfigurationClassBeanDefinitionReader(...).new ComponentRegistrar() {...}.registerWithGeneratedName()");
+				return name;
+			}
+			public void registerBeanComponent(BeanComponentDefinition component) {
+				System.out
+						.println("ConfigurationClassBeanDefinitionReader.ConfigurationClassBeanDefinitionReader(...).new ComponentRegistrar() {...}.registerBeanComponent()");
+			}
+			public void registerComponent(ComponentDefinition component) {
+				System.out
+						.println("ConfigurationClassBeanDefinitionReader.ConfigurationClassBeanDefinitionReader(...).new ComponentRegistrar() {...}.registerComponent()");
+			}
+		});
+		this.executorContext.setResourceLoader(resourceLoader);
+		this.executorContext.setEnvironment(environment);
 	}
 
 
@@ -129,7 +163,8 @@ class ConfigurationClassBeanDefinitionReader {
 	 */
 	private void loadBeanDefinitionsForConfigurationClass(ConfigurationClass configClass) {
 		if (this.componentScanSpecCreator.accepts(configClass.getMetadata())) {
-			this.componentScanSpecExecutor.execute(this.componentScanSpecCreator.createFrom(configClass.getMetadata()));
+			ComponentScanSpecification spec = this.componentScanSpecCreator.createFrom(configClass.getMetadata());
+			this.componentScanSpecExecutor.execute(spec, this.executorContext);
 		}
 		doLoadBeanDefinitionForConfigurationClassIfNecessary(configClass);
 		for (ConfigurationClassMethod beanMethod : configClass.getMethods()) {
@@ -278,21 +313,69 @@ class ConfigurationClassBeanDefinitionReader {
 	 * consider introducing some kind of check to see if we're in a tooling context and make guesses
 	 * based on return type rather than actually invoking the method and processing the the specification
 	 * object that returns.
+	 * @throws SecurityException 
 	 */
-	private void loadBeanDefinitionsForSpecMethod(ConfigurationClassSpecMethod specMethod) {
+	private void loadBeanDefinitionsForSpecMethod(ConfigurationClassSpecMethod specMethod) throws SecurityException {
 		// get the return type
+		Class<?> methodReturnType;
+		try {
+			methodReturnType = Class.forName(specMethod.getMetadata().getMethodReturnType());
+		} catch (ClassNotFoundException ex) {
+			throw new RuntimeException(ex);
+		}
 		// ensure a legal return type (assignable to Specification), raise error otherwise
+		if (!(Specification.class.isAssignableFrom(methodReturnType))) {
+			throw new IllegalArgumentException("return type from @SpecMethod methods must be assignable to Specification");
+		}
 		// get the classname.methodname
+		Class<?> declaringClass;
+		try {
+			declaringClass = Class.forName(specMethod.getMetadata().getDeclaringClassName());
+		} catch (ClassNotFoundException ex) {
+			throw new RuntimeException(ex);
+		}
+		Method method;
+		try {
+			method = declaringClass.getMethod(specMethod.getMetadata().getMethodName());
+		} catch (SecurityException ex) {
+			throw new RuntimeException(ex);
+		} catch (NoSuchMethodException ex) {
+			throw new RuntimeException(ex);
+		}
 		// reflectively invoke that method
+		Specification spec;
+		try {
+			method.setAccessible(true);
+			Constructor<?> noArgCtor = declaringClass.getConstructor();
+			noArgCtor.setAccessible(true);
+			Object newInstance = noArgCtor.newInstance();
+			spec = (Specification) method.invoke(newInstance);
+		} catch (IllegalArgumentException ex) {
+			throw new RuntimeException(ex);
+		} catch (IllegalAccessException ex) {
+			throw new RuntimeException(ex);
+		} catch (InvocationTargetException ex) {
+			throw new RuntimeException(ex);
+		} catch (InstantiationException ex) {
+			throw new RuntimeException(ex);
+		} catch (NoSuchMethodException ex) {
+			throw new RuntimeException(ex);
+		}
 		// offer the returned specification object to all registered SpecificationExecutors
-		/*
 		SpecificationExecutorResolver resolver = createDefaultSpecificationExecutorResolver();
+		Class<? extends Specification> specType = spec.getClass();
 		SpecificationExecutor executor = resolver.resolve(specType);
 		if (executor == null) {
 			//error("Unable to locate Spring NamespaceHandler for XML schema namespace [" + namespaceUri + "]", ele);
 			throw new IllegalArgumentException("Unable to locate Spring SpecificationExecutor for Specification type [" + specType + "]");
 		}
-		executor.execute(spec);
+		// TODO: check to see if the spec is instanceof SourceAwareSpecification or some such
+		if (spec instanceof SourceAwareSpecification) {
+			((SourceAwareSpecification)spec).setSource(method);
+			((SourceAwareSpecification)spec).setSourceName(method.getName());
+		}
+		executor.execute(spec, this.executorContext);
+		/*
 		*/
 		/*
 		for (SpecificationExecutor specExecutor : registeredSpecExecutors) {

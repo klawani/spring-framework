@@ -20,6 +20,7 @@ import org.springframework.aop.config.AopNamespaceUtils;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.context.ExecutorContext;
 import org.w3c.dom.Element;
 
 /**
@@ -61,9 +62,11 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
 		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator(parserContext);
 		TxAnnotationDriven spec = specCreator.createFrom(element);
-		TxAnnotationDrivenSpecificationExecutor specExecutor =
-			new TxAnnotationDrivenSpecificationExecutor(parserContext.getRegistry(), parserContext);
-		specExecutor.execute(spec);
+		TxAnnotationDrivenSpecificationExecutor specExecutor = new TxAnnotationDrivenSpecificationExecutor();
+		ExecutorContext executorContext = new ExecutorContext();
+		executorContext.setRegistry(parserContext.getRegistry());
+		executorContext.setRegistrar(parserContext);
+		specExecutor.execute(spec, executorContext);
 		return null;
 	}
 

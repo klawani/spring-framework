@@ -27,6 +27,7 @@ import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.BeanDefinitionParserDelegate;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.beans.factory.xml.XmlReaderContext;
+import org.springframework.context.ExecutorContext;
 import org.w3c.dom.Element;
 
 /**
@@ -54,12 +55,16 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		ComponentScanElementSpecificationCreator specCreator = new ComponentScanElementSpecificationCreator(parserContext);
 		ComponentScanSpecification spec = specCreator.createFrom(element);
 
-		ComponentScanSpecificationExecutor specExecutor =
-			new ComponentScanSpecificationExecutor(registry, readerContext.getResourceLoader(), delegate.getEnvironment());
+		ComponentScanSpecificationExecutor specExecutor = new ComponentScanSpecificationExecutor();
 		specExecutor.setBeanDefinitionDefaults(delegate.getBeanDefinitionDefaults());
 		specExecutor.setAutowireCandidatePatterns(delegate.getAutowireCandidatePatterns());
 
-		specExecutor.execute(spec);
+		ExecutorContext executorContext = new ExecutorContext();
+		executorContext.setRegistry(registry);
+		executorContext.setResourceLoader(readerContext.getResourceLoader());
+		executorContext.setEnvironment(delegate.getEnvironment());
+
+		specExecutor.execute(spec, executorContext);
 
 		Object source = readerContext.extractSource(element);
 		CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(element.getTagName(), source);

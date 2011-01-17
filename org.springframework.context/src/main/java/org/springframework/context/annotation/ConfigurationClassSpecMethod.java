@@ -34,4 +34,8 @@ class ConfigurationClassSpecMethod {
 		this.metadata = metadata;
 		this.configurationClass = configurationClass;
 	}
+
+	public MethodMetadata getMetadata() {
+		return this.metadata;
+	}
 }

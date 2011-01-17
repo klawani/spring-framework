@@ -25,6 +25,7 @@ import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.AbstractSpecificationExecutor;
+import org.springframework.context.ExecutorContext;
 import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
 import org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
@@ -48,25 +49,18 @@ class TxAnnotationDrivenSpecificationExecutor extends AbstractSpecificationExecu
 	private static final String TRANSACTION_ASPECT_CLASS_NAME =
 			"org.springframework.transaction.aspectj.AnnotationTransactionAspect";
 
-
-	private final BeanDefinitionRegistry registry;
-
-	private final ComponentRegistrar registrar;
-
-
-	public TxAnnotationDrivenSpecificationExecutor(BeanDefinitionRegistry registry, ComponentRegistrar registrar) {
-		this.registry = registry;
-		this.registrar = registrar;
-	}
+	public TxAnnotationDrivenSpecificationExecutor() { }
 
 	@Override
-	public void doExecute(TxAnnotationDriven txSpec) {
+	public void doExecute(TxAnnotationDriven txSpec, ExecutorContext executorContext) {
+		BeanDefinitionRegistry registry = executorContext.getRegistry();
+		ComponentRegistrar registrar = executorContext.getRegistrar();
 		switch (txSpec.proxyType()) {
 			case ASPECTJ:
-				registerTransactionAspect(txSpec, this.registry, this.registrar);
+				registerTransactionAspect(txSpec, registry, registrar);
 				break;
 			case SPRINGAOP:
-				AopAutoProxyConfigurer.configureAutoProxyCreator(txSpec, this.registry, this.registrar);
+				AopAutoProxyConfigurer.configureAutoProxyCreator(txSpec, registry, registrar);
 				break;
 			default:
 				throw new IllegalArgumentException(

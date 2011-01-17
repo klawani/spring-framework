@@ -18,4 +18,6 @@ package org.springframework.context;
 
 public interface SpecificationExecutorResolver {
 
+	SpecificationExecutor resolve(Class<? extends Specification> specType);
+
 }

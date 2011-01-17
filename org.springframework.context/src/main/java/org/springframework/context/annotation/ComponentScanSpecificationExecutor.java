@@ -22,6 +22,7 @@ import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.BeanDefinitionDefaults;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.AbstractSpecificationExecutor;
+import org.springframework.context.ExecutorContext;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.filter.TypeFilter;
@@ -34,18 +35,10 @@ import org.springframework.core.type.filter.TypeFilter;
  */
 class ComponentScanSpecificationExecutor extends AbstractSpecificationExecutor<ComponentScanSpecification> {
 
-	private final BeanDefinitionRegistry registry;
-	private final ResourceLoader resourceLoader;
-	private final Environment environment;
 	private BeanDefinitionDefaults beanDefinitionDefaults;
 	private String[] autowireCandidatePatterns;
 	private Set<BeanDefinitionHolder> scannedBeans;
 
-	public ComponentScanSpecificationExecutor(BeanDefinitionRegistry registry, ResourceLoader resourceLoader, Environment environment) {
-		this.registry = registry;
-		this.resourceLoader = resourceLoader;
-		this.environment = environment;
-	}
 
 	public void setBeanDefinitionDefaults(BeanDefinitionDefaults beanDefinitionDefaults) {
 		this.beanDefinitionDefaults = beanDefinitionDefaults;
@@ -77,13 +70,17 @@ class ComponentScanSpecificationExecutor extends AbstractSpecificationExecutor<C
 	 * the given specification and perform actual scanning and bean definition
 	 * registration.
 	 */
-	public void doExecute(ComponentScanSpecification spec) {
-		ClassPathBeanDefinitionScanner scanner = spec.getUseDefaultFilters() == null ?
-			new ClassPathBeanDefinitionScanner(this.registry) :
-			new ClassPathBeanDefinitionScanner(this.registry, spec.getUseDefaultFilters());
+	public void doExecute(ComponentScanSpecification spec, ExecutorContext executorContext) {
+		BeanDefinitionRegistry registry = executorContext.getRegistry();
+		ResourceLoader resourceLoader = executorContext.getResourceLoader();
+		Environment environment = executorContext.getEnvironment();
 
-		scanner.setResourceLoader(this.resourceLoader);
-		scanner.setEnvironment(this.environment);
+		ClassPathBeanDefinitionScanner scanner = spec.getUseDefaultFilters() == null ?
+			new ClassPathBeanDefinitionScanner(registry) :
+			new ClassPathBeanDefinitionScanner(registry, spec.getUseDefaultFilters());
+
+		scanner.setResourceLoader(resourceLoader);
+		scanner.setEnvironment(environment);
 
 		if (this.beanDefinitionDefaults != null) {
 			scanner.setBeanDefinitionDefaults(this.beanDefinitionDefaults);

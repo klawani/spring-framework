@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-package org.springframework.context.annotation;
+package org.springframework.context;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+public interface SourceAwareSpecification {
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface SpecMethod {
+	public abstract String getSourceName();
+
+	public abstract void setSourceName(String sourceName);
+
+	public abstract Object getSource();
+
+	public abstract void setSource(Object source);
+
 }

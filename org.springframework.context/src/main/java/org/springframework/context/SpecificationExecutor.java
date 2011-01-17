@@ -41,6 +41,6 @@ public interface SpecificationExecutor {
 	 * Execute the given specification, usually resulting in registration
 	 * of bean definitions against a bean factory.
 	 */
-	void execute(Specification spec);
+	void execute(Specification spec, ExecutorContext executorContext);
 
 }
