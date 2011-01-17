@@ -18,18 +18,8 @@ package org.springframework.transaction.config;
 
 import org.springframework.aop.config.AopNamespaceUtils;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.RuntimeBeanReference;
-import org.springframework.beans.factory.parsing.BeanComponentDefinition;
-import org.springframework.beans.factory.parsing.ComponentRegistrar;
-import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
-import org.springframework.context.annotation.ProxyType;
-import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
-import org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor;
-import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.w3c.dom.Element;
 
 /**
@@ -45,6 +35,7 @@ import org.w3c.dom.Element;
  *
  * @author Juergen Hoeller
  * @author Rob Harrop
+ * @author Chris Beams
  * @since 2.0
  */
 class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
@@ -53,16 +44,13 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * The bean name of the internally managed transaction advisor (mode="proxy").
 	 */
 	public static final String TRANSACTION_ADVISOR_BEAN_NAME =
-			"org.springframework.transaction.config.internalTransactionAdvisor";
+			TxAnnotationDrivenSpecificationExecutor.TRANSACTION_ADVISOR_BEAN_NAME;
 
 	/**
 	 * The bean name of the internally managed transaction aspect (mode="aspectj").
 	 */
 	public static final String TRANSACTION_ASPECT_BEAN_NAME =
-			"org.springframework.transaction.config.internalTransactionAspect";
-
-	private static final String TRANSACTION_ASPECT_CLASS_NAME =
-			"org.springframework.transaction.aspectj.AnnotationTransactionAspect";
+			TxAnnotationDrivenSpecificationExecutor.TRANSACTION_ASPECT_BEAN_NAME;
 
 
 	/**
@@ -71,78 +59,12 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * with the container as necessary.
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
-		BeanDefinitionRegistry registry = parserContext.getRegistry();
 		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator(parserContext);
 		TxAnnotationDriven spec = specCreator.createFrom(element);
-		//new TxAnnotationDrivenSpecificationExecutor().execute(spec);
-		if (spec.proxyType() == ProxyType.ASPECTJ) {
-			// mode="aspectj"
-			registerTransactionAspect(spec, registry, parserContext);
-		}
-		else {
-			// mode="proxy"
-			AopAutoProxyConfigurer.configureAutoProxyCreator(registry, spec, parserContext);
-		}
+		TxAnnotationDrivenSpecificationExecutor specExecutor =
+			new TxAnnotationDrivenSpecificationExecutor(parserContext.getRegistry(), parserContext);
+		specExecutor.execute(spec);
 		return null;
 	}
 
-	private void registerTransactionAspect(TxAnnotationDriven spec, BeanDefinitionRegistry registry, ComponentRegistrar registrar) {
-		if (!registry.containsBeanDefinition(TRANSACTION_ASPECT_BEAN_NAME)) {
-			RootBeanDefinition def = new RootBeanDefinition();
-			def.setBeanClassName(TRANSACTION_ASPECT_CLASS_NAME);
-			def.setFactoryMethodName("aspectOf");
-			registerTransactionManager(spec, def);
-			registrar.registerBeanComponent(new BeanComponentDefinition(def, TRANSACTION_ASPECT_BEAN_NAME));
-		}
-	}
-
-	private static void registerTransactionManager(TxAnnotationDriven spec, BeanDefinition def) {
-		def.getPropertyValues().add("transactionManagerBeanName", spec.transactionManagerName());
-	}
-
-	/**
-	 * Inner class to just introduce an AOP framework dependency when actually in proxy mode.
-	 */
-	private static class AopAutoProxyConfigurer {
-
-		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, ComponentRegistrar registrar) {
-			Object eleSource = spec.getSource();
-			String eleName = spec.getSourceName();
-			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(registry, registrar, eleSource, spec);
-
-			if (!registry.containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {
-
-				// Create the TransactionAttributeSource definition.
-				RootBeanDefinition sourceDef = new RootBeanDefinition(AnnotationTransactionAttributeSource.class);
-				sourceDef.setSource(eleSource);
-				sourceDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-				String sourceName = registrar.registerWithGeneratedName(sourceDef);
-
-				// Create the TransactionInterceptor definition.
-				RootBeanDefinition interceptorDef = new RootBeanDefinition(TransactionInterceptor.class);
-				interceptorDef.setSource(eleSource);
-				interceptorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-				registerTransactionManager(spec, interceptorDef);
-				interceptorDef.getPropertyValues().add("transactionAttributeSource", new RuntimeBeanReference(sourceName));
-				String interceptorName = registrar.registerWithGeneratedName(interceptorDef);
-
-				// Create the TransactionAttributeSourceAdvisor definition.
-				RootBeanDefinition advisorDef = new RootBeanDefinition(BeanFactoryTransactionAttributeSourceAdvisor.class);
-				advisorDef.setSource(eleSource);
-				advisorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-				advisorDef.getPropertyValues().add("transactionAttributeSource", new RuntimeBeanReference(sourceName));
-				advisorDef.getPropertyValues().add("adviceBeanName", interceptorName);
-				if (spec.order() != null) {
-					advisorDef.getPropertyValues().add("order", spec.order());
-				}
-				registry.registerBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME, advisorDef);
-
-				CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(eleName, eleSource);
-				compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName));
-				compositeDef.addNestedComponent(new BeanComponentDefinition(interceptorDef, interceptorName));
-				compositeDef.addNestedComponent(new BeanComponentDefinition(advisorDef, TRANSACTION_ADVISOR_BEAN_NAME));
-				registrar.registerComponent(compositeDef);
-			}
-		}
-	}
 }
