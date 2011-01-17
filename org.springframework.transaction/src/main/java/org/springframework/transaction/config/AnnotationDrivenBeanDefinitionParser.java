@@ -107,8 +107,8 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	private static class AopAutoProxyConfigurer {
 
-		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Object eleSource, String eleName, ParserContext parserContext) {
-			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(registry, parserContext, eleSource, spec);
+		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Object eleSource, String eleName, ComponentRegistrar registrar) {
+			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(registry, registrar, eleSource, spec);
 
 			if (!registry.containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {
 
@@ -116,7 +116,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				RootBeanDefinition sourceDef = new RootBeanDefinition(AnnotationTransactionAttributeSource.class);
 				sourceDef.setSource(eleSource);
 				sourceDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-				String sourceName = parserContext.getReaderContext().registerWithGeneratedName(sourceDef);
+				String sourceName = registrar.registerWithGeneratedName(sourceDef);
 
 				// Create the TransactionInterceptor definition.
 				RootBeanDefinition interceptorDef = new RootBeanDefinition(TransactionInterceptor.class);
@@ -124,7 +124,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				interceptorDef.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 				registerTransactionManager(spec, interceptorDef);
 				interceptorDef.getPropertyValues().add("transactionAttributeSource", new RuntimeBeanReference(sourceName));
-				String interceptorName = parserContext.getReaderContext().registerWithGeneratedName(interceptorDef);
+				String interceptorName = registrar.registerWithGeneratedName(interceptorDef);
 
 				// Create the TransactionAttributeSourceAdvisor definition.
 				RootBeanDefinition advisorDef = new RootBeanDefinition(BeanFactoryTransactionAttributeSourceAdvisor.class);
@@ -141,7 +141,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName));
 				compositeDef.addNestedComponent(new BeanComponentDefinition(interceptorDef, interceptorName));
 				compositeDef.addNestedComponent(new BeanComponentDefinition(advisorDef, TRANSACTION_ADVISOR_BEAN_NAME));
-				parserContext.registerComponent(compositeDef);
+				registrar.registerComponent(compositeDef);
 			}
 		}
 	}

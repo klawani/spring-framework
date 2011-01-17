@@ -53,7 +53,7 @@ public abstract class AopNamespaceUtils {
 
 
 	/**
-	 * @deprecated in favor of {@link #registerAutoProxyCreatorIfNecessary(BeanDefinitionRegistry, ParserContext, Object, ProxySpecification)}
+	 * @deprecated in favor of {@link #registerAutoProxyCreatorIfNecessary(BeanDefinitionRegistry, ComponentRegistrar, Object, ProxySpecification)}
 	 */
 	@Deprecated
 	public static void registerAutoProxyCreatorIfNecessary(
@@ -66,7 +66,7 @@ public abstract class AopNamespaceUtils {
 	}
 
 	public static void registerAutoProxyCreatorIfNecessary(
-			BeanDefinitionRegistry registry, ParserContext parserContext, Object source, ProxySpecification proxySpec) {
+			BeanDefinitionRegistry registry, ComponentRegistrar parserContext, Object source, ProxySpecification proxySpec) {
 
 		BeanDefinition beanDefinition =
 			AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry, source);

@@ -122,4 +122,8 @@ public final class ParserContext implements ComponentRegistrar {
 		registerComponent(component);
 	}
 
+	public String registerWithGeneratedName(BeanDefinition beanDefinition) {
+		return this.readerContext.registerWithGeneratedName(beanDefinition);
+	}
+
 }
