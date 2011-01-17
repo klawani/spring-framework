@@ -71,16 +71,19 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * with the container as necessary.
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
+		BeanDefinitionRegistry registry = parserContext.getRegistry();
 		TxAnnotationDrivenElementSpecificationCreator specCreator = new TxAnnotationDrivenElementSpecificationCreator();
 		TxAnnotationDriven spec = specCreator.createFrom(element);
 		//new TxAnnotationDrivenSpecificationExecutor().execute(spec);
 		if (spec.proxyType() == ProxyType.ASPECTJ) {
 			// mode="aspectj"
-			registerTransactionAspect(spec, parserContext.getRegistry(), parserContext);
+			registerTransactionAspect(spec, registry, parserContext);
 		}
 		else {
 			// mode="proxy"
-			AopAutoProxyConfigurer.configureAutoProxyCreator(parserContext.getRegistry(), spec, element, parserContext);
+			Object eleSource = parserContext.extractSource(element);
+			String eleName = element.getTagName();
+			AopAutoProxyConfigurer.configureAutoProxyCreator(registry, spec, eleSource, eleName, parserContext);
 		}
 		return null;
 	}
@@ -99,17 +102,15 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 		def.getPropertyValues().add("transactionManagerBeanName", spec.transactionManagerName());
 	}
 
-
 	/**
 	 * Inner class to just introduce an AOP framework dependency when actually in proxy mode.
 	 */
 	private static class AopAutoProxyConfigurer {
 
-		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Element element, ParserContext parserContext) {
-			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(parserContext.getRegistry(), parserContext, element, spec);
+		public static void configureAutoProxyCreator(BeanDefinitionRegistry registry, TxAnnotationDriven spec, Object eleSource, String eleName, ParserContext parserContext) {
+			AopNamespaceUtils.registerAutoProxyCreatorIfNecessary(registry, parserContext, eleSource, spec);
 
-			if (!parserContext.getRegistry().containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {
-				Object eleSource = parserContext.extractSource(element);
+			if (!registry.containsBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME)) {
 
 				// Create the TransactionAttributeSource definition.
 				RootBeanDefinition sourceDef = new RootBeanDefinition(AnnotationTransactionAttributeSource.class);
@@ -134,9 +135,9 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 				if (spec.order() != null) {
 					advisorDef.getPropertyValues().add("order", spec.order());
 				}
-				parserContext.getRegistry().registerBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME, advisorDef);
+				registry.registerBeanDefinition(TRANSACTION_ADVISOR_BEAN_NAME, advisorDef);
 
-				CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(element.getTagName(), eleSource);
+				CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(eleName, eleSource);
 				compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName));
 				compositeDef.addNestedComponent(new BeanComponentDefinition(interceptorDef, interceptorName));
 				compositeDef.addNestedComponent(new BeanComponentDefinition(advisorDef, TRANSACTION_ADVISOR_BEAN_NAME));
