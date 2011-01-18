@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.AnnotationTransactionAttribute
 import org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 
-class TxAnnotationDrivenSpecificationExecutor extends AbstractSpecificationExecutor<TxAnnotationDriven> {
+class TxAnnotationDrivenExecutor extends AbstractSpecificationExecutor<TxAnnotationDriven> {
 
 	/**
 	 * The bean name of the internally managed transaction advisor (used when

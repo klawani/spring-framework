@@ -46,13 +46,13 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 * The bean name of the internally managed transaction advisor (mode="proxy").
 	 */
 	public static final String TRANSACTION_ADVISOR_BEAN_NAME =
-			TxAnnotationDrivenSpecificationExecutor.TRANSACTION_ADVISOR_BEAN_NAME;
+			TxAnnotationDrivenExecutor.TRANSACTION_ADVISOR_BEAN_NAME;
 
 	/**
 	 * The bean name of the internally managed transaction aspect (mode="aspectj").
 	 */
 	public static final String TRANSACTION_ASPECT_BEAN_NAME =
-			TxAnnotationDrivenSpecificationExecutor.TRANSACTION_ASPECT_BEAN_NAME;
+			TxAnnotationDrivenExecutor.TRANSACTION_ASPECT_BEAN_NAME;
 
 
 	private static final String PROXY_TYPE_ATTRIBUTE = "mode";
@@ -71,7 +71,7 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
 		TxAnnotationDriven spec = createSpecification(element, parserContext);
-		TxAnnotationDrivenSpecificationExecutor specExecutor = new TxAnnotationDrivenSpecificationExecutor();
+		TxAnnotationDrivenExecutor specExecutor = new TxAnnotationDrivenExecutor();
 		specExecutor.execute(spec, createExecutorContext(parserContext));
 		return null;
 	}

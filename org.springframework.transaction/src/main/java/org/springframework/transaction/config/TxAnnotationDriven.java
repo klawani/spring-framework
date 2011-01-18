@@ -25,7 +25,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 public class TxAnnotationDriven extends AbstractFeatureSpecification implements ProxySpecification {
 
-	private static final Class<? extends SpecificationExecutor> DEFAULT_EXECUTOR_TYPE = TxAnnotationDrivenSpecificationExecutor.class;
+	private static final Class<? extends SpecificationExecutor> DEFAULT_EXECUTOR_TYPE = TxAnnotationDrivenExecutor.class;
 
 	private PlatformTransactionManager txManager;
 	private String txManagerName;
