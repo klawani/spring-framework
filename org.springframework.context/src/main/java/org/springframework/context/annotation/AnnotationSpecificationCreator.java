@@ -16,7 +16,7 @@
 
 package org.springframework.context.annotation;
 
-import org.springframework.context.Specification;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.context.SpecificationCreator;
 import org.springframework.context.SpecificationExecutor;
 import org.springframework.context.xml.XmlElementSpecificationCreator;
@@ -26,7 +26,7 @@ import org.springframework.core.type.AnnotationMetadata;
  * TODO SPR-7194: documentation (clean up)
  *
  * Interface for parsing {@link AnnotationMetadata} into a more generic
- * {@link Specification} object. Used in conjunction with a
+ * {@link FeatureSpecification} object. Used in conjunction with a
  * {@link SpecificationExecutor} to provide a source-agnostic approach to
  * handling configuration metadata.
  *
@@ -44,7 +44,7 @@ import org.springframework.core.type.AnnotationMetadata;
  *
  * @author Chris Beams
  * @since 3.1
- * @see Specification
+ * @see FeatureSpecification
  * @see SpecificationExecutor
  * @see XmlElementSpecificationCreator
  */
@@ -59,12 +59,12 @@ public interface AnnotationSpecificationCreator extends SpecificationCreator<Ann
 
 	/**
 	 * Parse the given annotation metadata into a more general
-	 * {@link Specification} object.
+	 * {@link FeatureSpecification} object.
 	 * @param metadata the annotation metadata to parse
 	 * @return the metadata definition, suitable for reading by
 	 * a {@link SpecificationExecutor}.
 	 * @see AnnotationSpecificationCreator
 	 */
-	Specification createFrom(AnnotationMetadata metadata);
+	FeatureSpecification createFrom(AnnotationMetadata metadata);
 
 }

@@ -26,7 +26,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.SpecMethod;
+import org.springframework.context.annotation.Feature;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.CallCountingTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,9 +55,9 @@ public class TxAnnotationDrivenConfigurationClassTests {
 @Configuration
 class TxConfig {
 
-	@SpecMethod
+	@Feature
 	public TxAnnotationDriven tx() {
-		return new TxAnnotationDriven(this.txManager());
+		return new TxAnnotationDriven(this.txManager()).proxyTargetClass(false);
 	}
 
 	@Bean

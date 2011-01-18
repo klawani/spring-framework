@@ -18,14 +18,14 @@ package org.springframework.context.annotation;
 
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.context.InvalidSpecificationException;
-import org.springframework.context.Specification;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.core.type.filter.TypeFilter;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link Specification} implementation that holds component-scanning
+ * {@link FeatureSpecification} implementation that holds component-scanning
  * configuration metadata.  This decouples the metadata from its XML or
  * annotation source. Once this structure has been populated by an XML
  * or annotation parser, it may be read by {@link ComponentScanSpecificationExecutor}
@@ -38,7 +38,7 @@ import org.springframework.util.StringUtils;
  * @see ComponentScanElementSpecificationCreator
  * @see ComponentScanSpecificationExecutor
  */
-class ComponentScanSpecification implements Specification {
+class ComponentScanSpecification implements FeatureSpecification {
 
 	private Boolean includeAnnotationConfig = null;
 	private String resourcePattern = null;

@@ -20,7 +20,7 @@ import java.lang.reflect.Constructor;
 
 public class DefaultSpecificationExecutorResolver implements SpecificationExecutorResolver {
 
-	public SpecificationExecutor resolve(Class<? extends Specification> specType) {
+	public SpecificationExecutor resolve(Class<? extends FeatureSpecification> specType) {
 		try {
 			Class<?> specificationExecutorClass = Class.forName("org.springframework.transaction.config.TxAnnotationDrivenSpecificationExecutor");
 			Constructor<?> noArgCtor = specificationExecutorClass.getDeclaredConstructor();

@@ -16,7 +16,7 @@
 
 package org.springframework.context.xml;
 
-import org.springframework.context.Specification;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.context.SpecificationCreator;
 import org.springframework.context.annotation.AnnotationSpecificationCreator;
 import org.w3c.dom.Element;
@@ -31,6 +31,6 @@ import org.w3c.dom.Element;
  */
 public interface XmlElementSpecificationCreator extends SpecificationCreator<Element> {
 
-	Specification createFrom(Element element);
+	FeatureSpecification createFrom(Element element);
 
 }

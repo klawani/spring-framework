@@ -19,7 +19,7 @@ package org.springframework.context.annotation;
 import org.springframework.core.type.MethodMetadata;
 
 /**
- * Represents a {@link Configuration} class method marked with the {@link SpecMethod} annotation.
+ * Represents a {@link Configuration} class method marked with the {@link Feature} annotation.
  *
  * TODO: unify with {@link ConfigurationClassMethod} through a supertype.  Rename CCM to CCBM and make the supertype
  * CCM or ACCM.
@@ -27,13 +27,13 @@ import org.springframework.core.type.MethodMetadata;
  * @author Chris Beams
  * @since 3.1
  */
-class ConfigurationClassSpecMethod {
+class ConfigurationClassFeatureMethod {
 
 	private final MethodMetadata metadata;
 
 	private final ConfigurationClass configurationClass;
 
-	public ConfigurationClassSpecMethod(MethodMetadata metadata, ConfigurationClass configurationClass) {
+	public ConfigurationClassFeatureMethod(MethodMetadata metadata, ConfigurationClass configurationClass) {
 		this.metadata = metadata;
 		this.configurationClass = configurationClass;
 	}

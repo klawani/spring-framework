@@ -24,6 +24,6 @@ package org.springframework.context;
  */
 public interface SpecificationCreator<S> {
 
-	Specification createFrom(S source);
+	FeatureSpecification createFrom(S source);
 
 }

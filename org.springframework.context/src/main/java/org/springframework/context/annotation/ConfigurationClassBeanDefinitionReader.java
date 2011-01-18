@@ -37,7 +37,6 @@ import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
 import org.springframework.beans.factory.parsing.ComponentDefinition;
 import org.springframework.beans.factory.parsing.ComponentRegistrar;
-import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
 import org.springframework.beans.factory.parsing.Location;
 import org.springframework.beans.factory.parsing.Problem;
 import org.springframework.beans.factory.parsing.ProblemReporter;
@@ -52,7 +51,7 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.DefaultSpecificationExecutorResolver;
 import org.springframework.context.ExecutorContext;
 import org.springframework.context.SourceAwareSpecification;
-import org.springframework.context.Specification;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.context.SpecificationExecutor;
 import org.springframework.context.SpecificationExecutorResolver;
 import org.springframework.core.Conventions;
@@ -66,7 +65,6 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -170,8 +168,8 @@ class ConfigurationClassBeanDefinitionReader {
 		for (ConfigurationClassMethod beanMethod : configClass.getMethods()) {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
-		for (ConfigurationClassSpecMethod specMethod : configClass.getSpecMethods()) {
-			loadBeanDefinitionsForSpecMethod(specMethod);
+		for (ConfigurationClassFeatureMethod specMethod : configClass.getFeatureMethods()) {
+			loadBeanDefinitionsForFeatureMethod(specMethod);
 		}
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
 	}
@@ -315,7 +313,7 @@ class ConfigurationClassBeanDefinitionReader {
 	 * object that returns.
 	 * @throws SecurityException 
 	 */
-	private void loadBeanDefinitionsForSpecMethod(ConfigurationClassSpecMethod specMethod) throws SecurityException {
+	private void loadBeanDefinitionsForFeatureMethod(final ConfigurationClassFeatureMethod specMethod) throws SecurityException {
 		// get the return type
 		Class<?> methodReturnType;
 		try {
@@ -324,8 +322,8 @@ class ConfigurationClassBeanDefinitionReader {
 			throw new RuntimeException(ex);
 		}
 		// ensure a legal return type (assignable to Specification), raise error otherwise
-		if (!(Specification.class.isAssignableFrom(methodReturnType))) {
-			throw new IllegalArgumentException("return type from @SpecMethod methods must be assignable to Specification");
+		if (!(FeatureSpecification.class.isAssignableFrom(methodReturnType))) {
+			throw new IllegalArgumentException("return type from @Feature methods must be assignable to FeatureSpecification");
 		}
 		// get the classname.methodname
 		Class<?> declaringClass;
@@ -343,13 +341,13 @@ class ConfigurationClassBeanDefinitionReader {
 			throw new RuntimeException(ex);
 		}
 		// reflectively invoke that method
-		Specification spec;
+		FeatureSpecification spec;
 		try {
 			method.setAccessible(true);
 			Constructor<?> noArgCtor = declaringClass.getDeclaredConstructor();
 			noArgCtor.setAccessible(true);
 			Object newInstance = noArgCtor.newInstance();
-			spec = (Specification) method.invoke(newInstance);
+			spec = (FeatureSpecification) method.invoke(newInstance);
 		} catch (IllegalArgumentException ex) {
 			throw new RuntimeException(ex);
 		} catch (IllegalAccessException ex) {
@@ -363,7 +361,7 @@ class ConfigurationClassBeanDefinitionReader {
 		}
 		// offer the returned specification object to all registered SpecificationExecutors
 		SpecificationExecutorResolver resolver = createDefaultSpecificationExecutorResolver();
-		Class<? extends Specification> specType = spec.getClass();
+		Class<? extends FeatureSpecification> specType = spec.getClass();
 		SpecificationExecutor executor = resolver.resolve(specType);
 		if (executor == null) {
 			//error("Unable to locate Spring NamespaceHandler for XML schema namespace [" + namespaceUri + "]", ele);

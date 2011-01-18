@@ -49,8 +49,9 @@ package org.springframework.context;
  * @since 3.1
  * @see SpecificationCreator
  * @see SpecificationExecutor
+ * @see org.springframework.context.annotation.Feature
  */
-public interface Specification {
+public interface FeatureSpecification {
 
 	/**
 	 * Validate this specification instance to ensure all required properties

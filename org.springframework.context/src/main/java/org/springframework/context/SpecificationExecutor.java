@@ -19,7 +19,7 @@ package org.springframework.context;
 /**
  * TODO SPR-7194: document (clean up)
  *
- * Interface for executing a populated configuration {@link Specification}. Provides
+ * Interface for executing a populated configuration {@link FeatureSpecification}. Provides
  * a generic mechanism for handling container configuration metadata regardless of
  * origin in XML, annotations, or other source format.
  *
@@ -35,12 +35,12 @@ public interface SpecificationExecutor {
 	/**
 	 * Return whether this executor is capable of executing the given specification.
 	 */
-	boolean accepts(Specification spec);
+	boolean accepts(FeatureSpecification spec);
 
 	/**
 	 * Execute the given specification, usually resulting in registration
 	 * of bean definitions against a bean factory.
 	 */
-	void execute(Specification spec, ExecutorContext executorContext);
+	void execute(FeatureSpecification spec, ExecutorContext executorContext);
 
 }

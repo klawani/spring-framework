@@ -19,11 +19,11 @@ package org.springframework.transaction.config;
 import org.springframework.aop.config.ProxySpecification;
 import org.springframework.context.InvalidSpecificationException;
 import org.springframework.context.SourceAwareSpecification;
-import org.springframework.context.Specification;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.context.annotation.ProxyType;
 import org.springframework.transaction.PlatformTransactionManager;
 
-public class TxAnnotationDriven implements Specification, ProxySpecification, SourceAwareSpecification {
+public class TxAnnotationDriven implements FeatureSpecification, ProxySpecification, SourceAwareSpecification {
 
 	private PlatformTransactionManager txManager;
 	private String txManagerName;
