@@ -93,6 +93,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 	private Environment environment;
 
+	private ConfigurationClassBeanDefinitionReader reader;
+
 
 	/**
 	 * Set the {@link SourceExtractor} to use for generated bean definitions
@@ -154,7 +156,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 					"postProcessBeanFactory already called for this post-processor");
 		}
 		this.postProcessBeanDefinitionRegistryCalled = true;
-		processConfigBeanDefinitions(registry);
+		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader(registry);
+		processConfigBeanDefinitions(registry, reader);
 	}
 
 	/**
@@ -167,20 +170,30 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 					"postProcessBeanFactory already called for this post-processor");
 		}
 		this.postProcessBeanFactoryCalled = true;
+		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader((BeanDefinitionRegistry)beanFactory);
 		if (!this.postProcessBeanDefinitionRegistryCalled) {
 			// BeanDefinitionRegistryPostProcessor hook apparently not supported...
 			// Simply call processConfigBeanDefinitions lazily at this point then.
-			processConfigBeanDefinitions((BeanDefinitionRegistry) beanFactory);
+			processConfigBeanDefinitions((BeanDefinitionRegistry) beanFactory, reader);
 		}
-		enhanceConfigurationClasses(beanFactory);
+		System.out.println("ConfigurationClassPostProcessor.postProcessBeanFactory()");
+		Set<Class<?>> enhancedConfigClasses = enhanceConfigurationClasses(beanFactory);
+		reader.loadBeanDefinitionsForFeatureMethods(enhancedConfigClasses);
 	}
 
+	private ConfigurationClassBeanDefinitionReader getConfigurationClassBeanDefinitionReader(BeanDefinitionRegistry registry) {
+		if (this.reader == null) {
+			this.reader = new ConfigurationClassBeanDefinitionReader(
+					registry, this.sourceExtractor, this.problemReporter, this.metadataReaderFactory, this.resourceLoader, this.environment);
+		}
+		return this.reader;
+	}
 
 	/**
 	 * Build and validate a configuration model based on the registry of
 	 * {@link Configuration} classes.
 	 */
-	public void processConfigBeanDefinitions(BeanDefinitionRegistry registry) {
+	public void processConfigBeanDefinitions(BeanDefinitionRegistry registry, ConfigurationClassBeanDefinitionReader reader) {
 		Set<BeanDefinitionHolder> configCandidates = new LinkedHashSet<BeanDefinitionHolder>();
 		for (String beanName : registry.getBeanDefinitionNames()) {
 			BeanDefinition beanDef = registry.getBeanDefinition(beanName);
@@ -213,8 +226,6 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 		parser.validate();
 
 		// Read the model and create bean definitions based on its content
-		ConfigurationClassBeanDefinitionReader reader = new ConfigurationClassBeanDefinitionReader(
-				registry, this.sourceExtractor, this.problemReporter, this.metadataReaderFactory, this.resourceLoader, this.environment);
 		reader.loadBeanDefinitions(parser.getConfigurationClasses());
 	}
 
@@ -224,7 +235,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 	 * Candidate status is determined by BeanDefinition attribute metadata.
 	 * @see ConfigurationClassEnhancer
 	 */
-	public void enhanceConfigurationClasses(ConfigurableListableBeanFactory beanFactory) {
+	public Set<Class<?>> enhanceConfigurationClasses(ConfigurableListableBeanFactory beanFactory) {
+		Set<Class<?>> enhancedConfigClasses = new LinkedHashSet<Class<?>>();
 		Map<String, AbstractBeanDefinition> configBeanDefs = new LinkedHashMap<String, AbstractBeanDefinition>();
 		for (String beanName : beanFactory.getBeanDefinitionNames()) {
 			BeanDefinition beanDef = beanFactory.getBeanDefinition(beanName);
@@ -238,7 +250,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 		}
 		if (configBeanDefs.isEmpty()) {
 			// nothing to enhance -> return immediately
-			return;
+			return enhancedConfigClasses;
 		}
 		if (!cglibAvailable) {
 			throw new IllegalStateException("CGLIB is required to process @Configuration classes. " +
@@ -256,11 +268,14 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 							"with enhanced class name '%s'", entry.getKey(), configClass.getName(), enhancedClass.getName()));
 				}
 				beanDef.setBeanClass(enhancedClass);
+				enhancedConfigClasses.add(enhancedClass);
 			}
 			catch (Throwable ex) {
 				throw new IllegalStateException("Cannot load configuration class: " + beanDef.getBeanClassName(), ex);
 			}
 		}
+
+		return enhancedConfigClasses;
 	}
 
 }

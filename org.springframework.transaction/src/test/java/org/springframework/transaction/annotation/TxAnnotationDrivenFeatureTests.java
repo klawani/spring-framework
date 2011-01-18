@@ -57,6 +57,7 @@ class TxConfig {
 
 	@Feature
 	public TxAnnotationDriven tx() {
+		System.out.println("TxConfig.tx(): " + this);
 		return new TxAnnotationDriven(this.txManager()).proxyTargetClass(false);
 	}
 
@@ -67,6 +68,7 @@ class TxConfig {
 
 	@Bean
 	public PlatformTransactionManager txManager() {
+		System.out.println("TxConfig.txManager(): " + this);
 		return new CallCountingTransactionManager();
 	}
 
