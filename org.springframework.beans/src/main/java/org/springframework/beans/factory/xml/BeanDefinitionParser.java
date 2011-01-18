@@ -42,7 +42,6 @@ import org.springframework.beans.factory.config.BeanDefinition;
  * @see AbstractBeanDefinitionParser
  * @see org.springframework.beans.factory.xml.BeanDefinitionDecorator
  * @see org.springframework.context.Specification
- * @see org.springframework.context.xml.XmlElementSpecificationCreator
  * @see org.springframework.context.AbstractSpecificationExecutor
  */
 public interface BeanDefinitionParser {

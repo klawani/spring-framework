@@ -19,7 +19,6 @@ package org.springframework.context.annotation;
 import org.springframework.context.FeatureSpecification;
 import org.springframework.context.SpecificationCreator;
 import org.springframework.context.SpecificationExecutor;
-import org.springframework.context.xml.XmlElementSpecificationCreator;
 import org.springframework.core.type.AnnotationMetadata;
 
 /**
@@ -33,7 +32,7 @@ import org.springframework.core.type.AnnotationMetadata;
  * <p>For example, Spring's component-scanning can be configured via XML using
  * the {@code context:component-scan} element or via the {@link ComponentScan}
  * annotation. In either case, the metadata is the same -- only the source
- * format differs.  {@link ComponentScanElementSpecificationCreator} is used to create
+ * format differs.  {@link ComponentScanBeanDefinitionParser} is used to create
  * a specification from the {@code <context:component-scan>} XML element, while
  * {@link ComponentScanAnnotationSpecificationCreator} creates a specification from the
  * the annotation style. They both produce a {@link ComponentScanSpecification}
@@ -46,7 +45,6 @@ import org.springframework.core.type.AnnotationMetadata;
  * @since 3.1
  * @see FeatureSpecification
  * @see SpecificationExecutor
- * @see XmlElementSpecificationCreator
  */
 public interface AnnotationSpecificationCreator extends SpecificationCreator<AnnotationMetadata> {
 

@@ -21,6 +21,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.context.ExecutorContext;
+import org.springframework.context.annotation.ProxyType;
 import org.w3c.dom.Element;
 
 /**
@@ -54,20 +55,45 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 			TxAnnotationDrivenSpecificationExecutor.TRANSACTION_ASPECT_BEAN_NAME;
 
 
+	private static final String PROXY_TYPE_ATTRIBUTE = "mode";
+
+	private static final String EXPOSE_PROXY_ATTRIBUTE = "expose-proxy";
+
+	private static final String PROXY_TARGET_CLASS_ATTRIBUTE = "proxy-target-class";
+
+	private static final String ORDER_ATTRIBUTE = "order";
+
+
 	/**
 	 * Parses the '<code>&lt;tx:annotation-driven/&gt;</code>' tag. Will
 	 * {@link AopNamespaceUtils#registerAutoProxyCreatorIfNecessary register an AutoProxyCreator}
 	 * with the container as necessary.
 	 */
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
-		TxAnnotationDrivenElementSpecificationCreator specCreator =
-			new TxAnnotationDrivenElementSpecificationCreator(parserContext);
-		TxAnnotationDriven spec = specCreator.createFrom(element);
+		TxAnnotationDriven spec = createSpecification(element, parserContext);
 		TxAnnotationDrivenSpecificationExecutor specExecutor = new TxAnnotationDrivenSpecificationExecutor();
 		specExecutor.execute(spec, createExecutorContext(parserContext));
 		return null;
 	}
 
+	protected TxAnnotationDriven createSpecification(Element element, ParserContext parserContext) {
+		TxAnnotationDriven spec = new TxAnnotationDriven(TxNamespaceHandler.getTransactionManagerName(element))
+			.proxyType(element.getAttribute(PROXY_TYPE_ATTRIBUTE).equals("aspectj") ?
+					ProxyType.ASPECTJ :
+					ProxyType.SPRINGAOP)
+			.order(element.hasAttribute(ORDER_ATTRIBUTE) ?
+					Integer.valueOf(element.getAttribute(ORDER_ATTRIBUTE)) :
+					null)
+			.proxyTargetClass(
+					Boolean.valueOf(element.getAttribute(PROXY_TARGET_CLASS_ATTRIBUTE)))
+			.exposeProxy(
+					Boolean.valueOf(element.getAttribute(EXPOSE_PROXY_ATTRIBUTE)));
+
+		spec.setSource(parserContext.extractSource(element));
+		spec.setSourceName(element.getTagName());
+
+		return spec;
+	}
 
 	/**
 	 * Adapt the given ParserContext instance into an ExecutorContext.

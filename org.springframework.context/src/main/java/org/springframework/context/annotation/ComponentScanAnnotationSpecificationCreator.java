@@ -38,7 +38,7 @@ import org.springframework.util.ClassUtils;
  * {@link SpecificationCreator} implementation that reads attributes from a
  * {@link ComponentScan @ComponentScan} annotation into a {@link ComponentScanSpecification}
  * which can in turn be executed by {@link ComponentScanExecutor}.
- * {@link ComponentScanElementSpecificationCreator} serves the same role for
+ * {@link ComponentScanBeanDefinitionParser} serves the same role for
  * the {@code <context:component-scan>} XML element.
  *
  * @author Chris Beams
@@ -46,7 +46,7 @@ import org.springframework.util.ClassUtils;
  * @see ComponentScan
  * @see ConfigurationClassBeanDefinitionReader
  * @see ComponentScanExecutor
- * @see ComponentScanElementSpecificationCreator
+ * @see ComponentScanBeanDefinitionParser
  */
 class ComponentScanAnnotationSpecificationCreator implements AnnotationSpecificationCreator {
 

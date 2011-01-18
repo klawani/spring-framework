@@ -39,7 +39,7 @@ import org.springframework.util.StringUtils;
  * @since 3.1
  * @see ComponentScan
  * @see ComponentScanAnnotationSpecificationCreator
- * @see ComponentScanElementSpecificationCreator
+ * @see ComponentScanBeanDefinitionParser
  * @see ComponentScanExecutor
  */
 public class ComponentScanSpecification extends AbstractFeatureSpecification {
