@@ -17,13 +17,16 @@
 package org.springframework.transaction.config;
 
 import org.springframework.aop.config.ProxySpecification;
+import org.springframework.context.AbstractFeatureSpecification;
 import org.springframework.context.InvalidSpecificationException;
 import org.springframework.context.SourceAwareSpecification;
-import org.springframework.context.FeatureSpecification;
+import org.springframework.context.SpecificationExecutor;
 import org.springframework.context.annotation.ProxyType;
 import org.springframework.transaction.PlatformTransactionManager;
 
-public class TxAnnotationDriven implements FeatureSpecification, ProxySpecification, SourceAwareSpecification {
+public class TxAnnotationDriven extends AbstractFeatureSpecification implements ProxySpecification, SourceAwareSpecification {
+
+	private static final Class<? extends SpecificationExecutor> DEFAULT_EXECUTOR_TYPE = TxAnnotationDrivenSpecificationExecutor.class;
 
 	private PlatformTransactionManager txManager;
 	private String txManagerName;
@@ -37,10 +40,12 @@ public class TxAnnotationDriven implements FeatureSpecification, ProxySpecificat
 	private String sourceName;
 
 	public TxAnnotationDriven(String txManagerName) {
+		super(DEFAULT_EXECUTOR_TYPE);
 		this.txManagerName = txManagerName;
 	}
 
 	public TxAnnotationDriven(PlatformTransactionManager txManager) {
+		super(DEFAULT_EXECUTOR_TYPE);
 		this.txManager = txManager;
 	}
 

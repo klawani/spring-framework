@@ -29,17 +29,17 @@ import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
- * Unit tests for {@link ComponentScanSpecificationExecutor}.
+ * Unit tests for {@link ComponentScanExecutor}.
  * 
  * @author Chris Beams
  */
 public class ComponentScanSpecificationExecutorTests {
-	private ComponentScanSpecificationExecutor executor;
+	private ComponentScanExecutor executor;
 	private ExecutorContext executorContext;
 
 	@Before
 	public void setUp() {
-		this.executor = new ComponentScanSpecificationExecutor();
+		this.executor = new ComponentScanExecutor();
 		this.executorContext = new ExecutorContext();
 		this.executorContext.setRegistry(new DefaultListableBeanFactory());
 		this.executorContext.setResourceLoader(new DefaultResourceLoader());

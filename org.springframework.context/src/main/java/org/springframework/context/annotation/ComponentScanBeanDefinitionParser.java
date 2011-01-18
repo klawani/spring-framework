@@ -33,7 +33,7 @@ import org.w3c.dom.Element;
 /**
  * Parser for the &lt;context:component-scan/&gt; element. Parsed metadata is
  * used to populate a {@link ComponentScanSpecification} object which is in turn
- * delegated to a {@link ComponentScanSpecificationExecutor} for actual scanning and
+ * delegated to a {@link ComponentScanExecutor} for actual scanning and
  * bean definition registration.
  * 
  * @author Mark Fisher
@@ -41,7 +41,7 @@ import org.w3c.dom.Element;
  * @author Juergen Hoeller
  * @author Chris Beams
  * @since 2.5
- * @see ComponentScanSpecificationExecutor
+ * @see ComponentScanExecutor
  * @see ComponentScan
  * @see ComponentScanAnnotationSpecificationCreator
  */
@@ -55,7 +55,7 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		ComponentScanElementSpecificationCreator specCreator = new ComponentScanElementSpecificationCreator(parserContext);
 		ComponentScanSpecification spec = specCreator.createFrom(element);
 
-		ComponentScanSpecificationExecutor specExecutor = new ComponentScanSpecificationExecutor();
+		ComponentScanExecutor specExecutor = new ComponentScanExecutor();
 		specExecutor.setBeanDefinitionDefaults(delegate.getBeanDefinitionDefaults());
 		specExecutor.setAutowireCandidatePatterns(delegate.getAutowireCandidatePatterns());
 
@@ -74,7 +74,7 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		}
 
 		// Register annotation config processors, if necessary.
-		if ((spec.getIncludeAnnotationConfig() != null) && spec.getIncludeAnnotationConfig()) {
+		if ((spec.includeAnnotationConfig() != null) && spec.includeAnnotationConfig()) {
 			Set<BeanDefinitionHolder> processorDefinitions =
 					AnnotationConfigUtils.registerAnnotationConfigProcessors(registry, source);
 			for (BeanDefinitionHolder processorDefinition : processorDefinitions) {

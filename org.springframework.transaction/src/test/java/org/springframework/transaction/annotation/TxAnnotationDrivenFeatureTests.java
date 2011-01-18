@@ -37,11 +37,11 @@ import org.springframework.transaction.config.TxAnnotationDriven;
  * Integration tests for {@link TxAnnotationDriven} support within @Configuration
  * classes. Adapted from original tx: namespace tests at
  * {@link AnnotationTransactionNamespaceHandlerTests}.
- * 
+ *
  * @author Chris Beams
  * @since 3.1
  */
-public class TxAnnotationDrivenConfigurationClassTests {
+public class TxAnnotationDrivenFeatureTests {
 	@Test
 	public void isProxy() {
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(TxConfig.class);

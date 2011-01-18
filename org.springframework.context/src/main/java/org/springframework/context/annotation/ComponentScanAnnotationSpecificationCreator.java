@@ -37,7 +37,7 @@ import org.springframework.util.ClassUtils;
 /**
  * {@link SpecificationCreator} implementation that reads attributes from a
  * {@link ComponentScan @ComponentScan} annotation into a {@link ComponentScanSpecification}
- * which can in turn be executed by {@link ComponentScanSpecificationExecutor}.
+ * which can in turn be executed by {@link ComponentScanExecutor}.
  * {@link ComponentScanElementSpecificationCreator} serves the same role for
  * the {@code <context:component-scan>} XML element.
  *
@@ -45,7 +45,7 @@ import org.springframework.util.ClassUtils;
  * @since 3.1
  * @see ComponentScan
  * @see ConfigurationClassBeanDefinitionReader
- * @see ComponentScanSpecificationExecutor
+ * @see ComponentScanExecutor
  * @see ComponentScanElementSpecificationCreator
  */
 class ComponentScanAnnotationSpecificationCreator implements AnnotationSpecificationCreator {
@@ -101,14 +101,14 @@ class ComponentScanAnnotationSpecificationCreator implements AnnotationSpecifica
 
 		ComponentScanSpecification spec = new ComponentScanSpecification();
 
-		String[] packageOfClasses = (String[])componentScanAttributes.get(PACKAGE_OF_ATTRIBUTE);
+		String[] basePackageClasses = (String[])componentScanAttributes.get(PACKAGE_OF_ATTRIBUTE);
 		String[] basePackages = (String[])componentScanAttributes.get(BASE_PACKAGES_ATTRIBUTE);
 		String[] basePackagesAlias = (String[])componentScanAttributes.get(BASE_PACKAGES_ATTRIBUTE_ALIAS);
 		if ((basePackages.length > 0 && basePackagesAlias.length > 0)
-				|| packageOfClasses.length == 0 && basePackages.length == 0 && basePackagesAlias.length == 0) {
+				|| basePackageClasses.length == 0 && basePackages.length == 0 && basePackagesAlias.length == 0) {
 			this.problemReporter.fatal(new InvalidComponentScanProblem(metadata.getClassName()));
 		}
-		for (String className : packageOfClasses) {
+		for (String className : basePackageClasses) {
 			spec.addBasePackage(className.substring(0, className.lastIndexOf('.')));
 		}
 		for (String pkg : basePackages) {
@@ -119,15 +119,15 @@ class ComponentScanAnnotationSpecificationCreator implements AnnotationSpecifica
 		}
 
 		ClassLoader classLoader = ClassUtils.getDefaultClassLoader();
-		spec.setResourcePattern((String)componentScanAttributes.get(RESOURCE_PATTERN_ATTRIBUTE));
-		spec.setUseDefaultFilters((Boolean)componentScanAttributes.get(USE_DEFAULT_FILTERS_ATTRIBUTE));
-		spec.setBeanNameGenerator(instantiateUserDefinedStrategy(
+		spec.resourcePattern((String)componentScanAttributes.get(RESOURCE_PATTERN_ATTRIBUTE));
+		spec.useDefaultFilters((Boolean)componentScanAttributes.get(USE_DEFAULT_FILTERS_ATTRIBUTE));
+		spec.beanNameGenerator(instantiateUserDefinedStrategy(
 				(String)componentScanAttributes.get(NAME_GENERATOR_ATTRIBUTE), BeanNameGenerator.class, classLoader));
-		spec.setScopeMetadataResolver(instantiateUserDefinedStrategy(
+		spec.scopeMetadataResolver(instantiateUserDefinedStrategy(
 				(String)componentScanAttributes.get(SCOPE_RESOLVER_ATTRIBUTE), ScopeMetadataResolver.class, classLoader));
 		ScopedProxyMode scopedProxyMode = (ScopedProxyMode) componentScanAttributes.get(SCOPED_PROXY_ATTRIBUTE);
 		if (scopedProxyMode != ScopedProxyMode.DEFAULT) {
-			spec.setScopedProxyMode(scopedProxyMode);
+			spec.scopedProxyMode(scopedProxyMode);
 		}
 		Filter[] includeFilters = (Filter[]) componentScanAttributes.get(INCLUDE_FILTER_ATTRIBUTE);
 		for (Filter includeFilter : includeFilters) {

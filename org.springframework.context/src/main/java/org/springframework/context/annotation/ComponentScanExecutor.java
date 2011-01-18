@@ -29,11 +29,11 @@ import org.springframework.core.type.filter.TypeFilter;
 
 /**
  * TODO SPR-7194: document
- * 
+ *
  * @author Chris Beams
  * @since 3.1
  */
-class ComponentScanSpecificationExecutor extends AbstractSpecificationExecutor<ComponentScanSpecification> {
+class ComponentScanExecutor extends AbstractSpecificationExecutor<ComponentScanSpecification> {
 
 	private BeanDefinitionDefaults beanDefinitionDefaults;
 	private String[] autowireCandidatePatterns;
@@ -75,9 +75,9 @@ class ComponentScanSpecificationExecutor extends AbstractSpecificationExecutor<C
 		ResourceLoader resourceLoader = executorContext.getResourceLoader();
 		Environment environment = executorContext.getEnvironment();
 
-		ClassPathBeanDefinitionScanner scanner = spec.getUseDefaultFilters() == null ?
+		ClassPathBeanDefinitionScanner scanner = spec.useDefaultFilters() == null ?
 			new ClassPathBeanDefinitionScanner(registry) :
-			new ClassPathBeanDefinitionScanner(registry, spec.getUseDefaultFilters());
+			new ClassPathBeanDefinitionScanner(registry, spec.useDefaultFilters());
 
 		scanner.setResourceLoader(resourceLoader);
 		scanner.setEnvironment(environment);
@@ -89,33 +89,33 @@ class ComponentScanSpecificationExecutor extends AbstractSpecificationExecutor<C
 			scanner.setAutowireCandidatePatterns(this.autowireCandidatePatterns);
 		}
 
-		if (spec.getResourcePattern() != null) {
-			scanner.setResourcePattern(spec.getResourcePattern());
+		if (spec.resourcePattern() != null) {
+			scanner.setResourcePattern(spec.resourcePattern());
 		}
-		if (spec.getBeanNameGenerator() != null) {
-			scanner.setBeanNameGenerator(spec.getBeanNameGenerator());
+		if (spec.beanNameGenerator() != null) {
+			scanner.setBeanNameGenerator(spec.beanNameGenerator());
 		}
-		if (spec.getIncludeAnnotationConfig() != null) {
-			scanner.setIncludeAnnotationConfig(spec.getIncludeAnnotationConfig());
+		if (spec.includeAnnotationConfig() != null) {
+			scanner.setIncludeAnnotationConfig(spec.includeAnnotationConfig());
 		}
-		if (spec.getScopeMetadataResolver() != null) {
-			scanner.setScopeMetadataResolver(spec.getScopeMetadataResolver());
+		if (spec.scopeMetadataResolver() != null) {
+			scanner.setScopeMetadataResolver(spec.scopeMetadataResolver());
 		}
-		if (spec.getScopedProxyMode() != null) {
-			scanner.setScopedProxyMode(spec.getScopedProxyMode());
+		if (spec.scopedProxyMode() != null) {
+			scanner.setScopedProxyMode(spec.scopedProxyMode());
 		}
-		if (spec.getIncludeFilters() != null) {
-			for (TypeFilter filter : spec.getIncludeFilters()) {
+		if (spec.includeFilters() != null) {
+			for (TypeFilter filter : spec.includeFilters()) {
 				scanner.addIncludeFilter(filter);
 			}
 		}
-		if (spec.getExcludeFilters() != null) {
-			for (TypeFilter filter : spec.getExcludeFilters()) {
+		if (spec.excludeFilters() != null) {
+			for (TypeFilter filter : spec.excludeFilters()) {
 				scanner.addExcludeFilter(filter);
 			}
 		}
 
-		this.scannedBeans = scanner.doScan(spec.getBasePackages());
+		this.scannedBeans = scanner.doScan(spec.basePackages());
 	}
 
 }

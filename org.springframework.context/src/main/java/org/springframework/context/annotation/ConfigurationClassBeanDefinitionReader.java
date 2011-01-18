@@ -101,7 +101,7 @@ class ConfigurationClassBeanDefinitionReader {
 
 	private final ComponentScanAnnotationSpecificationCreator componentScanSpecCreator;
 
-	private final ComponentScanSpecificationExecutor componentScanSpecExecutor;
+	private final ComponentScanExecutor componentScanSpecExecutor;
 
 	private ExecutorContext executorContext;
 
@@ -120,7 +120,7 @@ class ConfigurationClassBeanDefinitionReader {
 		this.problemReporter = problemReporter;
 		this.metadataReaderFactory = metadataReaderFactory;
 		this.componentScanSpecCreator = new ComponentScanAnnotationSpecificationCreator(this.problemReporter);
-		this.componentScanSpecExecutor = new ComponentScanSpecificationExecutor();
+		this.componentScanSpecExecutor = new ComponentScanExecutor();
 		this.executorContext = new ExecutorContext();
 		this.executorContext.setRegistry(registry);
 		this.executorContext.setRegistrar(new ComponentRegistrar() {

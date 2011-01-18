@@ -62,4 +62,10 @@ public interface FeatureSpecification {
 	 */
 	void validate() throws InvalidSpecificationException;
 
+	/**
+	 * The type of {@link SpecificationExecutor} that executes this specification.
+	 * Implementations may choose to make this property mutable.
+	 */
+	Class<? extends SpecificationExecutor> getExecutorType();
+
 }

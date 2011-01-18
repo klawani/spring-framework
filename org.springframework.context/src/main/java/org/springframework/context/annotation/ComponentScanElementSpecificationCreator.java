@@ -39,14 +39,14 @@ import org.w3c.dom.NodeList;
 /**
  * {@link SpecificationCreator} implementation that reads attributes from a
  * {@code <context:component-scan>} element into a {@link ComponentScanSpecification}
- * which can in turn be executed by {@link ComponentScanSpecificationExecutor}.
+ * which can in turn be executed by {@link ComponentScanExecutor}.
  * {@link ComponentScanAnnotationSpecificationCreator} serves the same role for
  * the {@link ComponentScan @ComponentScan} annotation.
  *
  * @author Chris Beams
  * @since 3.1
  * @see ComponentScanBeanDefinitionParser
- * @see ComponentScanSpecificationExecutor
+ * @see ComponentScanExecutor
  * @see ComponentScanAnnotationSpecificationCreator
  */
 class ComponentScanElementSpecificationCreator implements XmlElementSpecificationCreator {
@@ -83,25 +83,24 @@ class ComponentScanElementSpecificationCreator implements XmlElementSpecificatio
 	public ComponentScanSpecification createFrom(Element element) {
 		XmlReaderContext readerContext = parserContext.getReaderContext();
 
-		ComponentScanSpecification spec = new ComponentScanSpecification();
-
-		spec.setBasePackages(StringUtils.tokenizeToStringArray(element.getAttribute(BASE_PACKAGE_ATTRIBUTE),
-				ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+		ComponentScanSpecification spec = ComponentScanSpecification.withBasePackages(
+				StringUtils.tokenizeToStringArray(element.getAttribute(BASE_PACKAGE_ATTRIBUTE),
+						ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
 
 		if (element.hasAttribute(ANNOTATION_CONFIG_ATTRIBUTE)) {
-			spec.setIncludeAnnotationConfig(Boolean.valueOf(element.getAttribute(ANNOTATION_CONFIG_ATTRIBUTE)));
+			spec.includeAnnotationConfig(Boolean.valueOf(element.getAttribute(ANNOTATION_CONFIG_ATTRIBUTE)));
 		}
 
 		if (element.hasAttribute(USE_DEFAULT_FILTERS_ATTRIBUTE)) {
-			spec.setUseDefaultFilters(Boolean.valueOf(element.getAttribute(USE_DEFAULT_FILTERS_ATTRIBUTE)));
+			spec.useDefaultFilters(Boolean.valueOf(element.getAttribute(USE_DEFAULT_FILTERS_ATTRIBUTE)));
 		}
 
 		if (element.hasAttribute(RESOURCE_PATTERN_ATTRIBUTE)) {
-			spec.setResourcePattern(element.getAttribute(RESOURCE_PATTERN_ATTRIBUTE));
+			spec.resourcePattern(element.getAttribute(RESOURCE_PATTERN_ATTRIBUTE));
 		}
 
 		if (element.hasAttribute(NAME_GENERATOR_ATTRIBUTE)) {
-			spec.setBeanNameGenerator(instantiateUserDefinedStrategy(
+			spec.beanNameGenerator(instantiateUserDefinedStrategy(
 					element.getAttribute(NAME_GENERATOR_ATTRIBUTE), BeanNameGenerator.class,
 					readerContext.getResourceLoader().getClassLoader()));
 		}
@@ -116,19 +115,19 @@ class ComponentScanElementSpecificationCreator implements XmlElementSpecificatio
 			ScopeMetadataResolver scopeMetadataResolver = instantiateUserDefinedStrategy(
 					element.getAttribute(SCOPE_RESOLVER_ATTRIBUTE), ScopeMetadataResolver.class,
 					readerContext.getResourceLoader().getClassLoader());
-			spec.setScopeMetadataResolver(scopeMetadataResolver);
+			spec.scopeMetadataResolver(scopeMetadataResolver);
 		}
 
 		if (element.hasAttribute(SCOPED_PROXY_ATTRIBUTE)) {
 			String mode = element.getAttribute(SCOPED_PROXY_ATTRIBUTE);
 			if ("targetClass".equals(mode)) {
-				spec.setScopedProxyMode(ScopedProxyMode.TARGET_CLASS);
+				spec.scopedProxyMode(ScopedProxyMode.TARGET_CLASS);
 			}
 			else if ("interfaces".equals(mode)) {
-				spec.setScopedProxyMode(ScopedProxyMode.INTERFACES);
+				spec.scopedProxyMode(ScopedProxyMode.INTERFACES);
 			}
 			else if ("no".equals(mode)) {
-				spec.setScopedProxyMode(ScopedProxyMode.NO);
+				spec.scopedProxyMode(ScopedProxyMode.NO);
 			}
 			else {
 				throw new IllegalArgumentException("scoped-proxy only supports 'no', 'interfaces' and 'targetClass'");
