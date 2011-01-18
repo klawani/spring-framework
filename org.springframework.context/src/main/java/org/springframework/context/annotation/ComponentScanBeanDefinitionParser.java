@@ -17,19 +17,13 @@
 package org.springframework.context.annotation;
 
 import java.lang.annotation.Annotation;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.FatalBeanException;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.parsing.BeanComponentDefinition;
-import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
-import org.springframework.beans.factory.xml.BeanDefinitionParserDelegate;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.beans.factory.xml.XmlReaderContext;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -85,48 +79,15 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 
 
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
-		XmlReaderContext readerContext = parserContext.getReaderContext();
-		BeanDefinitionParserDelegate delegate = parserContext.getDelegate();
-		BeanDefinitionRegistry registry = parserContext.getRegistry();
-
 		ComponentScanSpecification spec = createSpecification(element, parserContext);
 
 		ComponentScanExecutor specExecutor = new ComponentScanExecutor();
-		specExecutor.setBeanDefinitionDefaults(delegate.getBeanDefinitionDefaults());
-		specExecutor.setAutowireCandidatePatterns(delegate.getAutowireCandidatePatterns());
+		specExecutor.setBeanDefinitionDefaults(parserContext.getDelegate().getBeanDefinitionDefaults());
+		specExecutor.setAutowireCandidatePatterns(parserContext.getDelegate().getAutowireCandidatePatterns());
 
 		specExecutor.execute(spec, createExecutorContext(parserContext));
 
-		Object source = readerContext.extractSource(element);
-		CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(element.getTagName(), source);
-
-		for (BeanDefinitionHolder beanDefHolder : specExecutor.getScannedBeans()) {
-			compositeDef.addNestedComponent(new BeanComponentDefinition(beanDefHolder));
-		}
-
-		// Register annotation config processors, if necessary.
-		if ((spec.includeAnnotationConfig() != null) && spec.includeAnnotationConfig()) {
-			Set<BeanDefinitionHolder> processorDefinitions =
-					AnnotationConfigUtils.registerAnnotationConfigProcessors(registry, source);
-			for (BeanDefinitionHolder processorDefinition : processorDefinitions) {
-				compositeDef.addNestedComponent(new BeanComponentDefinition(processorDefinition));
-			}
-		}
-
-		readerContext.fireComponentRegistered(compositeDef);
 		return null;
-	}
-
-	private ExecutorContext createExecutorContext(ParserContext parserContext) {
-		XmlReaderContext readerContext = parserContext.getReaderContext();
-		BeanDefinitionParserDelegate delegate = parserContext.getDelegate();
-		BeanDefinitionRegistry registry = parserContext.getRegistry();
-
-		ExecutorContext executorContext = new ExecutorContext();
-		executorContext.setRegistry(registry);
-		executorContext.setResourceLoader(readerContext.getResourceLoader());
-		executorContext.setEnvironment(delegate.getEnvironment());
-		return executorContext;
 	}
 
 	protected ComponentScanSpecification createSpecification(Element element, ParserContext parserContext) {
@@ -135,6 +96,9 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		ComponentScanSpecification spec = ComponentScanSpecification.withBasePackages(
 				StringUtils.tokenizeToStringArray(element.getAttribute(BASE_PACKAGE_ATTRIBUTE),
 						ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
+
+		spec.setSource(readerContext.extractSource(element));
+		spec.setSourceName(element.getTagName());
 
 		if (element.hasAttribute(ANNOTATION_CONFIG_ATTRIBUTE)) {
 			spec.includeAnnotationConfig(Boolean.valueOf(element.getAttribute(ANNOTATION_CONFIG_ATTRIBUTE)));
@@ -207,6 +171,15 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		}
 
 		return spec;
+	}
+
+	private ExecutorContext createExecutorContext(ParserContext parserContext) {
+		ExecutorContext executorContext = new ExecutorContext();
+		executorContext.setRegistry(parserContext.getRegistry());
+		executorContext.setRegistrar(parserContext);
+		executorContext.setResourceLoader(parserContext.getReaderContext().getResourceLoader());
+		executorContext.setEnvironment(parserContext.getDelegate().getEnvironment());
+		return executorContext;
 	}
 
 	@SuppressWarnings("unchecked")

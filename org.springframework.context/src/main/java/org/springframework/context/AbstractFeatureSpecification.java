@@ -16,9 +16,15 @@
 
 package org.springframework.context;
 
-public abstract class AbstractFeatureSpecification implements FeatureSpecification {
+public abstract class AbstractFeatureSpecification implements SourceAwareSpecification {
+
+	private static final Object DUMMY_SOURCE = new Object();
+	private static final String DUMMY_SOURCE_NAME = "dummySource";
 
 	private Class<? extends SpecificationExecutor> executorType;
+
+	private Object source = DUMMY_SOURCE;
+	private String sourceName = DUMMY_SOURCE_NAME;
 
 	protected AbstractFeatureSpecification(Class<? extends SpecificationExecutor> executorType) {
 		this.executorType = executorType;
@@ -30,6 +36,22 @@ public abstract class AbstractFeatureSpecification implements FeatureSpecificati
 
 	public void setExecutorType(Class<? extends SpecificationExecutor> executorType) {
 		this.executorType = executorType;
+	}
+
+	public void setSource(Object source) {
+		this.source = source;
+	}
+
+	public Object getSource() {
+		return this.source;
+	}
+
+	public void setSourceName(String sourceName) {
+		this.sourceName = sourceName;
+	}
+
+	public String getSourceName() {
+		return this.sourceName;
 	}
 
 }

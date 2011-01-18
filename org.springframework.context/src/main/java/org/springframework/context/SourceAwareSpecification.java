@@ -16,7 +16,7 @@
 
 package org.springframework.context;
 
-public interface SourceAwareSpecification {
+public interface SourceAwareSpecification extends FeatureSpecification {
 
 	public abstract String getSourceName();
 

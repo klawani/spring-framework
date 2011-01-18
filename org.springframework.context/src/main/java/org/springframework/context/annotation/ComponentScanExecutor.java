@@ -19,6 +19,8 @@ package org.springframework.context.annotation;
 import java.util.Set;
 
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionDefaults;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.AbstractSpecificationExecutor;
@@ -37,7 +39,6 @@ class ComponentScanExecutor extends AbstractSpecificationExecutor<ComponentScanS
 
 	private BeanDefinitionDefaults beanDefinitionDefaults;
 	private String[] autowireCandidatePatterns;
-	private Set<BeanDefinitionHolder> scannedBeans;
 
 
 	public void setBeanDefinitionDefaults(BeanDefinitionDefaults beanDefinitionDefaults) {
@@ -54,15 +55,6 @@ class ComponentScanExecutor extends AbstractSpecificationExecutor<ComponentScanS
 
 	public String[] getAutowireCandidatePatterns() {
 		return this.autowireCandidatePatterns;
-	}
-
-	/**
-	 * Return the bean definitions scanned on the last call to
-	 * {@link #execute(ComponentScanSpecification)} or {@code null} if {@code execute} has
-	 * not yet been called.
-	 */
-	public Set<BeanDefinitionHolder> getScannedBeans() {
-		return this.scannedBeans;
 	}
 
 	/**
@@ -115,7 +107,26 @@ class ComponentScanExecutor extends AbstractSpecificationExecutor<ComponentScanS
 			}
 		}
 
-		this.scannedBeans = scanner.doScan(spec.basePackages());
+		Set<BeanDefinitionHolder> scannedBeans = scanner.doScan(spec.basePackages());
+
+		Object source = spec.getSource();
+		String sourceName = spec.getSourceName();
+		CompositeComponentDefinition compositeDef = new CompositeComponentDefinition(sourceName, source);
+
+		for (BeanDefinitionHolder beanDefHolder : scannedBeans) {
+			compositeDef.addNestedComponent(new BeanComponentDefinition(beanDefHolder));
+		}
+
+		// Register annotation config processors, if necessary.
+		if ((spec.includeAnnotationConfig() != null) && spec.includeAnnotationConfig()) {
+			Set<BeanDefinitionHolder> processorDefinitions =
+					AnnotationConfigUtils.registerAnnotationConfigProcessors(registry, source);
+			for (BeanDefinitionHolder processorDefinition : processorDefinitions) {
+				compositeDef.addNestedComponent(new BeanComponentDefinition(processorDefinition));
+			}
+		}
+
+		executorContext.getRegistrar().registerComponent(compositeDef);
 	}
 
 }

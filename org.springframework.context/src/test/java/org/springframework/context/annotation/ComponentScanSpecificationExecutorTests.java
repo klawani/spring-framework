@@ -21,7 +21,10 @@ import static org.junit.Assert.assertThat;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.springframework.beans.factory.config.BeanDefinitionHolder;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentRegistrar;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ExecutorContext;
 import org.springframework.context.InvalidSpecificationException;
@@ -36,31 +39,42 @@ import org.springframework.mock.env.MockEnvironment;
 public class ComponentScanSpecificationExecutorTests {
 	private ComponentScanExecutor executor;
 	private ExecutorContext executorContext;
+	private DefaultListableBeanFactory bf;
 
 	@Before
 	public void setUp() {
+		this.bf = new DefaultListableBeanFactory();
 		this.executor = new ComponentScanExecutor();
 		this.executorContext = new ExecutorContext();
-		this.executorContext.setRegistry(new DefaultListableBeanFactory());
+		this.executorContext.setRegistry(bf);
 		this.executorContext.setResourceLoader(new DefaultResourceLoader());
 		this.executorContext.setEnvironment(new MockEnvironment());
+		this.executorContext.setRegistrar(new ComponentRegistrar() {
+			
+			public String registerWithGeneratedName(BeanDefinition beanDefinition) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+			
+			public void registerComponent(ComponentDefinition component) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			public void registerBeanComponent(BeanComponentDefinition component) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
 	}
 
 	@Test
 	public void validSpec() {
-		ComponentScanSpecification spec = new ComponentScanSpecification();
-		spec.addBasePackage("example.scannable");
+		ComponentScanSpecification spec = new ComponentScanSpecification("example.scannable");
 
 		this.executor.execute(spec, this.executorContext);
 
-		boolean targetBeanFound = false;
-		for (BeanDefinitionHolder beanDefHolder : this.executor.getScannedBeans()) {
-			if (beanDefHolder.getBeanName().equals("fooServiceImpl")) {
-				targetBeanFound = true;
-				break;
-			}
-		}
-		assertThat(targetBeanFound, is(true));
+		assertThat(bf.containsBean("fooServiceImpl"), is(true));
 	}
 
 	@Test(expected=InvalidSpecificationException.class)
