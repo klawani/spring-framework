@@ -154,9 +154,9 @@ class ConfigurationClassParser {
 		for (MethodMetadata beanMethod : beanMethods) {
 			configClass.addMethod(new ConfigurationClassMethod(beanMethod, configClass));
 		}
-		Set<MethodMetadata> specMethods = metadata.getAnnotatedMethods(Feature.class.getName());
-		for (MethodMetadata specMethod : specMethods) {
-			configClass.addFeatureMethod(new ConfigurationClassFeatureMethod(specMethod, configClass));
+		Set<MethodMetadata> featureMethods = metadata.getAnnotatedMethods(Feature.class.getName());
+		for (MethodMetadata featureMethod : featureMethods) {
+			configClass.addFeatureMethod(new ConfigurationClassFeatureMethod(featureMethod, configClass));
 		}
 	}
 

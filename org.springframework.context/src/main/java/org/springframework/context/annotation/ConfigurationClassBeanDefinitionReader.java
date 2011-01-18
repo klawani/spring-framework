@@ -168,8 +168,8 @@ class ConfigurationClassBeanDefinitionReader {
 		for (ConfigurationClassMethod beanMethod : configClass.getMethods()) {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
-		for (ConfigurationClassFeatureMethod specMethod : configClass.getFeatureMethods()) {
-			loadBeanDefinitionsForFeatureMethod(specMethod);
+		for (ConfigurationClassFeatureMethod featureMethod : configClass.getFeatureMethods()) {
+			loadBeanDefinitionsForFeatureMethod(featureMethod);
 		}
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
 	}
@@ -313,11 +313,11 @@ class ConfigurationClassBeanDefinitionReader {
 	 * object that returns.
 	 * @throws SecurityException 
 	 */
-	private void loadBeanDefinitionsForFeatureMethod(final ConfigurationClassFeatureMethod specMethod) throws SecurityException {
+	private void loadBeanDefinitionsForFeatureMethod(final ConfigurationClassFeatureMethod featureMethod) throws SecurityException {
 		// get the return type
 		Class<?> methodReturnType;
 		try {
-			methodReturnType = Class.forName(specMethod.getMetadata().getMethodReturnType());
+			methodReturnType = Class.forName(featureMethod.getMetadata().getMethodReturnType());
 		} catch (ClassNotFoundException ex) {
 			throw new RuntimeException(ex);
 		}
@@ -328,13 +328,13 @@ class ConfigurationClassBeanDefinitionReader {
 		// get the classname.methodname
 		Class<?> declaringClass;
 		try {
-			declaringClass = Class.forName(specMethod.getMetadata().getDeclaringClassName());
+			declaringClass = Class.forName(featureMethod.getMetadata().getDeclaringClassName());
 		} catch (ClassNotFoundException ex) {
 			throw new RuntimeException(ex);
 		}
 		Method method;
 		try {
-			method = declaringClass.getMethod(specMethod.getMetadata().getMethodName());
+			method = declaringClass.getMethod(featureMethod.getMetadata().getMethodName());
 		} catch (SecurityException ex) {
 			throw new RuntimeException(ex);
 		} catch (NoSuchMethodException ex) {
