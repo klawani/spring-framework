@@ -42,7 +42,7 @@ import org.springframework.util.StringUtils;
  * @see ComponentScanElementSpecificationCreator
  * @see ComponentScanExecutor
  */
-class ComponentScanSpecification extends AbstractFeatureSpecification {
+public class ComponentScanSpecification extends AbstractFeatureSpecification {
 
 	private static final Class<? extends SpecificationExecutor> DEFAULT_EXECUTOR_TYPE = ComponentScanExecutor.class;
 
