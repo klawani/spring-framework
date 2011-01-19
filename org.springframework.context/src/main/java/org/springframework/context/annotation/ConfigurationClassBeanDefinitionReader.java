@@ -17,19 +17,16 @@
 package org.springframework.context.annotation;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor;
@@ -50,9 +47,6 @@ import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ExecutorContext;
-import org.springframework.context.FeatureSpecification;
-import org.springframework.context.SourceAwareSpecification;
-import org.springframework.context.SpecificationExecutor;
 import org.springframework.core.Conventions;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.Environment;
@@ -64,7 +58,6 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -303,59 +296,6 @@ class ConfigurationClassBeanDefinitionReader {
 		registry.registerBeanDefinition(beanName, beanDefToRegister);
 	}
 
-	public void loadBeanDefinitionsForFeatureMethods(Set<Class<?>> configurationClasses) {
-		final Set<Method> featureMethods = new LinkedHashSet<Method>();
-		for (Class<?> configClass : configurationClasses) {
-			ReflectionUtils.doWithMethods(configClass,
-					new ReflectionUtils.MethodCallback() {
-						public void doWith(Method featureMethod) throws IllegalArgumentException, IllegalAccessException {
-							featureMethods.add(featureMethod);
-						} },
-					new ReflectionUtils.MethodFilter() {
-						public boolean matches(Method candidateMethod) {
-							return candidateMethod.isAnnotationPresent(Feature.class);
-						} });
-			for (Method featureMethod : featureMethods) {
-				loadBeanDefinitionsForFeatureMethod(featureMethod);
-			}
-		}
-	}
-
-	/**
-	 * TODO SPR-7420: this method invokes user-supplied code, which is not going to fly for STS
-	 * consider introducing some kind of check to see if we're in a tooling context and make guesses
-	 * based on return type rather than actually invoking the method and processing the the specification
-	 * object that returns.
-	 * @throws SecurityException 
-	 */
-	private void loadBeanDefinitionsForFeatureMethod(final Method featureMethod) throws SecurityException {
-		try {
-			// get the return type
-			if (!(FeatureSpecification.class.isAssignableFrom(featureMethod.getReturnType()))) {
-				// TODO: raise a Problem instead?
-				throw new IllegalArgumentException("return type from @Feature methods must be assignable to FeatureSpecification");
-			}
-
-			// reflectively invoke that method
-			FeatureSpecification spec;
-			Class<?> declaringClass = featureMethod.getDeclaringClass();
-			Constructor<?> noArgCtor = declaringClass.getDeclaredConstructor();
-			noArgCtor.setAccessible(true);
-			Object newInstance = noArgCtor.newInstance();
-			featureMethod.setAccessible(true);
-			spec = (FeatureSpecification) featureMethod.invoke(newInstance);
-
-			SpecificationExecutor executor = BeanUtils.instantiateClass(spec.getExecutorType());
-
-			if (spec instanceof SourceAwareSpecification) {
-				((SourceAwareSpecification)spec).setSource(featureMethod);
-				((SourceAwareSpecification)spec).setSourceName(featureMethod.getName());
-			}
-			executor.execute(spec, this.executorContext);
-		} catch (Exception ex) {
-			throw new RuntimeException(ex);
-		}
-	}
 
 	private void loadBeanDefinitionsFromImportedResources(Map<String, Class<?>> importedResources) {
 		Map<Class<?>, BeanDefinitionReader> readerInstanceCache = new HashMap<Class<?>, BeanDefinitionReader>();

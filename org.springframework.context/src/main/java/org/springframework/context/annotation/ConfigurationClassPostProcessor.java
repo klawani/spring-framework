@@ -17,6 +17,8 @@
 package org.springframework.context.annotation;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -24,12 +26,16 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanDefinitionStoreException;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.parsing.BeanComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentDefinition;
+import org.springframework.beans.factory.parsing.ComponentRegistrar;
 import org.springframework.beans.factory.parsing.FailFastProblemReporter;
 import org.springframework.beans.factory.parsing.PassThroughSourceExtractor;
 import org.springframework.beans.factory.parsing.ProblemReporter;
@@ -37,8 +43,13 @@ import org.springframework.beans.factory.parsing.SourceExtractor;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
 import org.springframework.context.EnvironmentAware;
+import org.springframework.context.ExecutorContext;
+import org.springframework.context.FeatureSpecification;
 import org.springframework.context.ResourceLoaderAware;
+import org.springframework.context.SourceAwareSpecification;
+import org.springframework.context.SpecificationExecutor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.DefaultResourceLoader;
@@ -47,6 +58,7 @@ import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
 
 /**
  * {@link BeanFactoryPostProcessor} used for bootstrapping processing of
@@ -156,8 +168,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 					"postProcessBeanFactory already called for this post-processor");
 		}
 		this.postProcessBeanDefinitionRegistryCalled = true;
-		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader(registry);
-		processConfigBeanDefinitions(registry, reader);
+		processConfigClasses(registry);
 	}
 
 	/**
@@ -170,15 +181,104 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 					"postProcessBeanFactory already called for this post-processor");
 		}
 		this.postProcessBeanFactoryCalled = true;
-		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader((BeanDefinitionRegistry)beanFactory);
 		if (!this.postProcessBeanDefinitionRegistryCalled) {
 			// BeanDefinitionRegistryPostProcessor hook apparently not supported...
-			// Simply call processConfigBeanDefinitions lazily at this point then.
-			processConfigBeanDefinitions((BeanDefinitionRegistry) beanFactory, reader);
+			// Simply call processConfigClasses lazily at this point then.
+			processConfigClasses((BeanDefinitionRegistry)beanFactory);
 		}
 		System.out.println("ConfigurationClassPostProcessor.postProcessBeanFactory()");
-		Set<Class<?>> enhancedConfigClasses = enhanceConfigurationClasses(beanFactory);
-		reader.loadBeanDefinitionsForFeatureMethods(enhancedConfigClasses);
+	}
+
+	private void processConfigClasses(BeanDefinitionRegistry registry) {
+		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader(registry);
+		processConfigBeanDefinitions(registry, reader);
+		Set<Class<?>> enhancedConfigClasses = enhanceConfigurationClasses((ConfigurableListableBeanFactory)registry);
+		processFeatureMethods(enhancedConfigClasses, (ConfigurableListableBeanFactory)registry);
+	}
+
+	private void processFeatureMethods(Set<Class<?>> configurationClasses, ConfigurableListableBeanFactory beanFactory) {
+		final Map<Class<?>, Set<Method>> featureMethodMap = new HashMap<Class<?>, Set<Method>>();
+		final Set<Method> featureMethods = new LinkedHashSet<Method>();
+		for (final Class<?> configClass : configurationClasses) {
+			ReflectionUtils.doWithMethods(configClass,
+					new ReflectionUtils.MethodCallback() {
+						public void doWith(Method featureMethod) throws IllegalArgumentException, IllegalAccessException {
+							if (!featureMethodMap.containsKey(configClass)) {
+								featureMethodMap.put(configClass, new LinkedHashSet<Method>());
+							}
+							featureMethodMap.get(configClass).add(featureMethod);
+							featureMethods.add(featureMethod);
+						} },
+					new ReflectionUtils.MethodFilter() {
+						public boolean matches(Method candidateMethod) {
+							return candidateMethod.isAnnotationPresent(Feature.class);
+						} });
+		}
+		for (Class<?> configClass : featureMethodMap.keySet()) {
+			Object configInstance = beanFactory.getBean(configClass);
+			for (Method featureMethod : featureMethodMap.get(configClass)) {
+				processFeatureMethod(featureMethod, configInstance, beanFactory);
+			}
+		}
+	}
+
+	/**
+	 * TODO SPR-7420: this method invokes user-supplied code, which is not going to fly for STS
+	 * consider introducing some kind of check to see if we're in a tooling context and make guesses
+	 * based on return type rather than actually invoking the method and processing the the specification
+	 * object that returns.
+	 * @param beanFactory 
+	 * @throws SecurityException 
+	 */
+	private void processFeatureMethod(final Method featureMethod, Object configInstance, ConfigurableListableBeanFactory beanFactory) throws SecurityException {
+		try {
+			// get the return type
+			if (!(FeatureSpecification.class.isAssignableFrom(featureMethod.getReturnType()))) {
+				// TODO: raise a Problem instead?
+				throw new IllegalArgumentException("return type from @Feature methods must be assignable to FeatureSpecification");
+			}
+
+			// reflectively invoke that method
+			FeatureSpecification spec;
+			featureMethod.setAccessible(true);
+			spec = (FeatureSpecification) featureMethod.invoke(configInstance);
+
+			SpecificationExecutor executor = BeanUtils.instantiateClass(spec.getExecutorType());
+
+			if (spec instanceof SourceAwareSpecification) {
+				((SourceAwareSpecification)spec).setSource(featureMethod);
+				((SourceAwareSpecification)spec).setSourceName(featureMethod.getName());
+			}
+			executor.execute(spec, createExecutorContext(beanFactory));
+		} catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	private ExecutorContext createExecutorContext(ConfigurableListableBeanFactory beanFactory) {
+		final BeanDefinitionRegistry registry = (BeanDefinitionRegistry) beanFactory;
+		ExecutorContext executorContext = new ExecutorContext();
+		executorContext.setEnvironment(this.environment);
+		executorContext.setRegistry(registry);
+		executorContext.setResourceLoader(this.resourceLoader);
+		executorContext.setRegistrar(new ComponentRegistrar() {
+			public String registerWithGeneratedName(BeanDefinition beanDefinition) {
+				String name = new DefaultBeanNameGenerator().generateBeanName(beanDefinition, registry);
+				registry.registerBeanDefinition(name, beanDefinition);
+				System.out
+						.println("ConfigurationClassPostProcessor.createExecutorContext(...).new ComponentRegistrar() {...}.registerWithGeneratedName()");
+				return name;
+			}
+			public void registerBeanComponent(BeanComponentDefinition component) {
+				System.out
+						.println("ConfigurationClassPostProcessor.createExecutorContext(...).new ComponentRegistrar() {...}.registerBeanComponent()");
+			}
+			public void registerComponent(ComponentDefinition component) {
+				System.out
+						.println("ConfigurationClassPostProcessor.createExecutorContext(...).new ComponentRegistrar() {...}.registerComponent()");
+			}
+		});
+		return executorContext;
 	}
 
 	private ConfigurationClassBeanDefinitionReader getConfigurationClassBeanDefinitionReader(BeanDefinitionRegistry registry) {
