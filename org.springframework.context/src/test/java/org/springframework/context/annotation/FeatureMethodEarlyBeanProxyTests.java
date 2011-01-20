@@ -16,12 +16,17 @@
 
 package org.springframework.context.annotation;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import java.lang.reflect.Proxy;
+
 import org.junit.Test;
-import org.springframework.aop.support.AopUtils;
-import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ExecutorContext;
 import org.springframework.context.FeatureSpecification;
 import org.springframework.context.InvalidSpecificationException;
@@ -40,51 +45,111 @@ public class FeatureMethodEarlyBeanProxyTests {
 	public void test() {
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(FeatureConfig.class);
 
-		ITestBean heldBean = ctx.getBean(BeanHolder.class).bean;
-		ITestBean actualBean = ctx.getBean(ITestBean.class);
+		// see assertions in FeatureConfig#feature()
 
-		assertThat(
-				"the object used by the Feature method should be a proxy",
-				AopUtils.isAopProxy(heldBean), is(true));
+		// sanity check that all the bean definitions we expect are present
+		assertThat(ctx.getBeanFactory().containsBeanDefinition("lazyHelperBean"), is(true));
+		assertThat(ctx.getBeanFactory().containsBeanDefinition("eagerHelperBean"), is(true));
+		assertThat(ctx.getBeanFactory().containsBeanDefinition("lazyPassthroughBean"), is(true));
+		assertThat(ctx.getBeanFactory().containsBeanDefinition("eagerPassthroughBean"), is(true));
 
-		assertThat(
-				"the bean itself should not be a proxy",
-				AopUtils.isAopProxy(actualBean), is(false));
+
+		// the lazy helper bean had methods invoked during feature method execution. it should be registered
+		assertThat(ctx.getBeanFactory().containsSingleton("lazyHelperBean"), is(true));
+
+		// the eager helper bean had methods invoked during feature method execution. it should be registered
+		assertThat(ctx.getBeanFactory().containsSingleton("eagerHelperBean"), is(true));
+
+		// the lazy passthrough bean was referenced in the feature method, but never invoked. it should not be registered.
+		assertThat(ctx.getBeanFactory().containsSingleton("lazyPassthroughBean"), is(false));
+
+		// the eager passthrough bean should be registered in any case as it is not lazy.
+		assertThat(ctx.getBeanFactory().containsSingleton("eagerPassthroughBean"), is(true));
+
+
+		// now actually fetch all the beans. none should be proxies.
+		assertThat(Proxy.isProxyClass(ctx.getBean("lazyHelperBean").getClass()), is(false));
+		assertThat(Proxy.isProxyClass(ctx.getBean("eagerHelperBean").getClass()), is(false));
+		assertThat(Proxy.isProxyClass(ctx.getBean("lazyPassthroughBean").getClass()), is(false));
+		assertThat(Proxy.isProxyClass(ctx.getBean("eagerPassthroughBean").getClass()), is(false));
 	}
 }
 
 @Configuration
-class FeatureConfig {
+class FeatureConfig implements BeanFactoryAware {
+	private DefaultListableBeanFactory beanFactory;
+
 	@Feature
 	public DummySpecification feature() {
-		return new DummySpecification(myBean());
+		DummySpecification spec = new DummySpecification();
+
+		// invocation of @Bean methods within @Feature methods should return proxies
+		ITestBean lazyHelperBean = this.lazyHelperBean();
+		ITestBean eagerHelperBean = this.eagerHelperBean();
+		ITestBean lazyPassthroughBean = this.lazyPassthroughBean();
+		ITestBean eagerPassthroughBean = this.eagerPassthroughBean();
+
+		assertThat(Proxy.isProxyClass(lazyHelperBean.getClass()), is(true));
+		assertThat(Proxy.isProxyClass(eagerHelperBean.getClass()), is(true));
+		assertThat(Proxy.isProxyClass(lazyPassthroughBean.getClass()), is(true));
+		assertThat(Proxy.isProxyClass(eagerPassthroughBean.getClass()), is(true));
+
+		// but at this point, the proxy instances should not have
+		// been registered as singletons with the container.
+		assertThat(this.beanFactory.containsSingleton("lazyHelperBean"), is(false));
+		assertThat(this.beanFactory.containsSingleton("eagerHelperBean"), is(false));
+		assertThat(this.beanFactory.containsSingleton("lazyPassthroughBean"), is(false));
+		assertThat(this.beanFactory.containsSingleton("eagerPassthroughBean"), is(false));
+
+		// invoking a method on the proxy should cause it to pass through
+		// to the container, instantiate the actual bean in question and
+		// register that actual underlying instance with the container.
+		assertThat(lazyHelperBean.getName(), equalTo("lazyHelper"));
+		assertThat(eagerHelperBean.getName(), equalTo("eagerHelper"));
+
+		assertThat(this.beanFactory.containsSingleton("lazyHelperBean"), is(true));
+		assertThat(this.beanFactory.containsSingleton("eagerHelperBean"), is(true));
+
+		// since no methods were called on the passthrough beans, they should remain
+		// uncreated / unregistered.
+		assertThat(this.beanFactory.containsSingleton("lazyPassthroughBean"), is(false));
+		assertThat(this.beanFactory.containsSingleton("eagerPassthroughBean"), is(false));
+
+		return spec;
+	}
+
+	@Lazy @Bean
+	public ITestBean lazyHelperBean() {
+		return new test.beans.TestBean("lazyHelper");
 	}
 
 	@Bean
-	public ITestBean myBean() {
-		return new test.beans.TestBean();
+	public ITestBean eagerHelperBean() {
+		return new test.beans.TestBean("eagerHelper");
+	}
+
+	@Lazy @Bean
+	public ITestBean lazyPassthroughBean() {
+		return new test.beans.TestBean("lazyPassthrough");
+	}
+
+	@Bean
+	public ITestBean eagerPassthroughBean() {
+		return new test.beans.TestBean("eagerPassthrough");
+	}
+
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		this.beanFactory = (DefaultListableBeanFactory)beanFactory;
 	}
 }
 
 class DummySpecification implements FeatureSpecification {
 
-	private final ITestBean bean;
-
-	public DummySpecification(ITestBean bean) {
-		this.bean = bean;
-	}
-
 	public void validate() throws InvalidSpecificationException {
-		// TODO Auto-generated method stub
-		
 	}
 
 	public Class<? extends SpecificationExecutor> getExecutorType() {
 		return DummyExecutor.class;
-	}
-
-	public ITestBean getBean() {
-		return this.bean;
 	}
 
 }
@@ -96,19 +161,7 @@ class DummyExecutor implements SpecificationExecutor {
 	}
 
 	public void execute(FeatureSpecification spec, ExecutorContext executorContext) {
-		DummySpecification dummySpec = (DummySpecification)spec;
-		BeanHolder beanHolder = new BeanHolder(dummySpec.getBean());
-		((DefaultSingletonBeanRegistry)executorContext.getRegistry()).registerSingleton("beanHolder", beanHolder);
+		// no-op
 	}
-	
-}
 
-class BeanHolder {
-
-	final ITestBean bean;
-
-	public BeanHolder(ITestBean bean) {
-		this.bean = bean;
-	}
-	
 }

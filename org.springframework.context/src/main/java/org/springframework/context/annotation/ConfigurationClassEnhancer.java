@@ -16,7 +16,9 @@
 
 package org.springframework.context.annotation;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,8 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.Assert;
+
+import test.beans.ITestBean;
 
 /**
  * Enhances {@link Configuration} classes by generating a CGLIB subclass capable of
@@ -165,24 +169,39 @@ class ConfigurationClassEnhancer {
 		 * Enhance a {@link Bean @Bean} method to check the supplied BeanFactory for the
 		 * existence of this bean object.
 		 */
-		public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
+		public Object intercept(final Object enhancedConfigInstance, final Method beanMethod, final Object[] beanMethodArgs, final MethodProxy cglibMethodProxy) throws Throwable {
 			if (this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies) {
-				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + method.getName());
+				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + beanMethod.getName());
+				Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {ITestBean.class}, new InvocationHandler() {
+					public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
+						if (targetMethod.getName().equals("toString")) {
+							return "early proxy for " + beanMethod.getName();
+						}
+						System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(...).new InvocationHandler() {...}.invoke(): CREATING REAL BEAN for " + beanMethod.getName());
+						//Object actualBean = doIntercept(enhancedConfigInstance, beanMethod, beanMethodArgs, cglibMethodProxy);
+						Object actualBean = cglibMethodProxy.invokeSuper(enhancedConfigInstance, beanMethodArgs);
+						beanFactory.registerSingleton(beanMethod.getName(), actualBean);
+						return targetMethod.invoke(actualBean, targetMethodArgs);
+					}
+				});
+				return proxiedBean;
 			}
-			else {
-				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING REAL BEAN for " + method.getName());
-			}
+			return doIntercept(enhancedConfigInstance, beanMethod, beanMethodArgs, cglibMethodProxy);
+		}
+		public Object doIntercept(final Object enhancedConfigInstance, Method beanMethod, Object[] beanMethodArgs, final MethodProxy cglibMethodProxy) throws Throwable {
+			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.doIntercept(): CREATING REAL BEAN for " + beanMethod.getName());
+
 			// by default the bean name is the name of the @Bean-annotated method
-			String beanName = method.getName();
+			String beanName = beanMethod.getName();
 
 			// check to see if the user has explicitly set the bean name
-			Bean bean = AnnotationUtils.findAnnotation(method, Bean.class);
+			Bean bean = AnnotationUtils.findAnnotation(beanMethod, Bean.class);
 			if (bean != null && bean.name().length > 0) {
 				beanName = bean.name()[0];
 			}
 
 			// determine whether this bean is a scoped-proxy
-			Scope scope = AnnotationUtils.findAnnotation(method, Scope.class);
+			Scope scope = AnnotationUtils.findAnnotation(beanMethod, Scope.class);
 			if (scope != null && scope.proxyMode() != ScopedProxyMode.NO) {
 				String scopedBeanName = ScopedProxyCreator.getTargetBeanName(beanName);
 				if (this.beanFactory.isCurrentlyInCreation(scopedBeanName)) {
@@ -214,8 +233,7 @@ class ConfigurationClassEnhancer {
 				return this.beanFactory.getBean(beanName);
 			}
 
-			// no cached instance of the bean exists - actually create and return the bean
-			return proxy.invokeSuper(obj, args);
+			return cglibMethodProxy.invokeSuper(enhancedConfigInstance, beanMethodArgs);
 		}
 
 		/**
