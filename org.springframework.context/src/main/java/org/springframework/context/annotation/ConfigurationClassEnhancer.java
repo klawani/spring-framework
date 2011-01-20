@@ -175,12 +175,13 @@ class ConfigurationClassEnhancer {
 				Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {ITestBean.class}, new InvocationHandler() {
 					public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
 						if (targetMethod.getName().equals("toString")) {
-							return "early proxy for " + beanMethod.getName();
+							return String.format("EarlyBeanReferenceProxy for %s object returned from @Bean method %s.%s()",
+									beanMethod.getReturnType().getSimpleName(),
+									beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName());
 						}
-						System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(...).new InvocationHandler() {...}.invoke(): CREATING REAL BEAN for " + beanMethod.getName());
-						//Object actualBean = doIntercept(enhancedConfigInstance, beanMethod, beanMethodArgs, cglibMethodProxy);
-						Object actualBean = cglibMethodProxy.invokeSuper(enhancedConfigInstance, beanMethodArgs);
-						beanFactory.registerSingleton(beanMethod.getName(), actualBean);
+						earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = false;
+						Object actualBean = beanFactory.getBean(beanMethod.getName());
+						earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = true;
 						return targetMethod.invoke(actualBean, targetMethodArgs);
 					}
 				});
