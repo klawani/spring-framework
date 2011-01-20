@@ -232,7 +232,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 	 * @param beanFactory 
 	 * @throws SecurityException 
 	 */
-	private void processFeatureMethod(final Method featureMethod, Object configInstance, ConfigurableListableBeanFactory beanFactory) throws SecurityException {
+	private void processFeatureMethod(final Method featureMethod, Object configInstance, ConfigurableListableBeanFactory beanFactory) {
 		try {
 			// get the return type
 			if (!(FeatureSpecification.class.isAssignableFrom(featureMethod.getReturnType()))) {
@@ -253,7 +253,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 			}
 			executor.execute(spec, createExecutorContext(beanFactory));
 		} catch (Exception ex) {
-			throw new RuntimeException(ex);
+			throw new FeatureMethodExecutionException(ex);
 		}
 	}
 

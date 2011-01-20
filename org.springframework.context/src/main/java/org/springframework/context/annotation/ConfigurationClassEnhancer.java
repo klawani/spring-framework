@@ -38,8 +38,6 @@ import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.Assert;
 
-import test.beans.ITestBean;
-
 /**
  * Enhances {@link Configuration} classes by generating a CGLIB subclass capable of
  * interacting with the Spring container to respect bean semantics.
@@ -168,16 +166,32 @@ class ConfigurationClassEnhancer {
 		/**
 		 * Enhance a {@link Bean @Bean} method to check the supplied BeanFactory for the
 		 * existence of this bean object.
+		 *
+		 * @throws ProxyCreationException if an early bean reference proxy should be
+		 * created but the return type of the bean method being intercepted is not an
+		 * interface and thus not a candidate for JDK proxy creation.
+		 * @throws Throwable as a catch-all for any exception that may be thrown when
+		 * invoking the super implementation of the proxied method i.e., the actual
+		 * {@code @Bean} method.
 		 */
-		public Object intercept(final Object enhancedConfigInstance, final Method beanMethod, final Object[] beanMethodArgs, final MethodProxy cglibMethodProxy) throws Throwable {
+		public Object intercept(final Object enhancedConfigInstance, final Method beanMethod, final Object[] beanMethodArgs,
+					final MethodProxy cglibMethodProxy) throws ProxyCreationException, Throwable {
+
 			if (this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies) {
+				final Class<?> returnType = beanMethod.getReturnType();
+				if (!returnType.isInterface()) {
+					throw new ProxyCreationException(String.format(
+							"@Bean method %s.%s() is referenced from within a @Feature method, therefore " +
+							"its return type must be an interface in order to allow for an early bean reference " +
+							"proxy to be created. Either modify the return type accordingly, or do not reference " +
+							"this bean method within @Feature methods.", beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName()));
+				}
 				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + beanMethod.getName());
-				Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {ITestBean.class}, new InvocationHandler() {
+				Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {returnType}, new InvocationHandler() {
 					public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
 						if (targetMethod.getName().equals("toString")) {
 							return String.format("EarlyBeanReferenceProxy for %s object returned from @Bean method %s.%s()",
-									beanMethod.getReturnType().getSimpleName(),
-									beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName());
+									returnType.getSimpleName(), beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName());
 						}
 						earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = false;
 						Object actualBean = beanFactory.getBean(beanMethod.getName());
@@ -187,9 +201,7 @@ class ConfigurationClassEnhancer {
 				});
 				return proxiedBean;
 			}
-			return doIntercept(enhancedConfigInstance, beanMethod, beanMethodArgs, cglibMethodProxy);
-		}
-		public Object doIntercept(final Object enhancedConfigInstance, Method beanMethod, Object[] beanMethodArgs, final MethodProxy cglibMethodProxy) throws Throwable {
+
 			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.doIntercept(): CREATING REAL BEAN for " + beanMethod.getName());
 
 			// by default the bean name is the name of the @Bean-annotated method

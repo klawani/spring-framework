@@ -17,9 +17,12 @@
 package org.springframework.context.annotation;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 
 import org.junit.Test;
@@ -33,19 +36,25 @@ import org.springframework.context.InvalidSpecificationException;
 import org.springframework.context.SpecificationExecutor;
 
 import test.beans.ITestBean;
+import test.beans.TestBean;
 
 /**
  * Tests that bean methods referenced from within Feature methods
  * get proxied early.
- * 
+ *
  * @author Chris Beams
+ * @since 3.1
  */
 public class FeatureMethodEarlyBeanProxyTests {
-	@Test
-	public void test() {
-		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(FeatureConfig.class);
 
-		// see assertions in FeatureConfig#feature()
+	@Test
+	public void earlyProxyCreationAndBeanRegistrationLifecycle() {
+		AnnotationConfigApplicationContext ctx =
+			new AnnotationConfigApplicationContext(FeatureConfig.class);
+
+		//
+		// see additional assertions in FeatureConfig#feature()
+		//
 
 		// sanity check that all the bean definitions we expect are present
 		assertThat(ctx.getBeanFactory().containsBeanDefinition("lazyHelperBean"), is(true));
@@ -57,27 +66,44 @@ public class FeatureMethodEarlyBeanProxyTests {
 		// the lazy helper bean had methods invoked during feature method execution. it should be registered
 		assertThat(ctx.getBeanFactory().containsSingleton("lazyHelperBean"), is(true));
 
-		// the eager helper bean had methods invoked during feature method execution. it should be registered
+		// the eager helper bean had methods invoked but should be registered in any case is it is non-lazy
 		assertThat(ctx.getBeanFactory().containsSingleton("eagerHelperBean"), is(true));
 
-		// the lazy passthrough bean was referenced in the feature method, but never invoked. it should not be registered.
+		// the lazy passthrough bean was referenced in the feature method, but never invoked. it should not be registered
 		assertThat(ctx.getBeanFactory().containsSingleton("lazyPassthroughBean"), is(false));
 
-		// the eager passthrough bean should be registered in any case as it is not lazy.
+		// the eager passthrough bean should be registered in any case as it is non-lazy
 		assertThat(ctx.getBeanFactory().containsSingleton("eagerPassthroughBean"), is(true));
 
 
-		// now actually fetch all the beans. none should be proxies.
+		// now actually fetch all the beans. none should be proxies
 		assertThat(Proxy.isProxyClass(ctx.getBean("lazyHelperBean").getClass()), is(false));
 		assertThat(Proxy.isProxyClass(ctx.getBean("eagerHelperBean").getClass()), is(false));
 		assertThat(Proxy.isProxyClass(ctx.getBean("lazyPassthroughBean").getClass()), is(false));
 		assertThat(Proxy.isProxyClass(ctx.getBean("eagerPassthroughBean").getClass()), is(false));
 	}
+
+
+	@Test
+	public void earlyProxyBeansMustBeInterfaceBased() {
+		try {
+			new AnnotationConfigApplicationContext(InvalidFeatureConfig.class);
+			fail("should have thrown");
+		} catch (FeatureMethodExecutionException ex) {
+			assertThat(ex.getCause(), instanceOf(InvocationTargetException.class));
+			assertThat(ex.getCause().getCause(), instanceOf(ProxyCreationException.class));
+		}
+	}
 }
+
 
 @Configuration
 class FeatureConfig implements BeanFactoryAware {
 	private DefaultListableBeanFactory beanFactory;
+
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		this.beanFactory = (DefaultListableBeanFactory)beanFactory;
+	}
 
 	@Feature
 	public DummySpecification feature() {
@@ -103,7 +129,7 @@ class FeatureConfig implements BeanFactoryAware {
 
 		// invoking a method on the proxy should cause it to pass through
 		// to the container, instantiate the actual bean in question and
-		// register that actual underlying instance with the container.
+		// register that actual underlying instance as a singleton.
 		assertThat(lazyHelperBean.getName(), equalTo("lazyHelper"));
 		assertThat(eagerHelperBean.getName(), equalTo("eagerHelper"));
 
@@ -120,27 +146,24 @@ class FeatureConfig implements BeanFactoryAware {
 
 	@Lazy @Bean
 	public ITestBean lazyHelperBean() {
-		return new test.beans.TestBean("lazyHelper");
+		return new TestBean("lazyHelper");
 	}
 
 	@Bean
 	public ITestBean eagerHelperBean() {
-		return new test.beans.TestBean("eagerHelper");
+		return new TestBean("eagerHelper");
 	}
 
 	@Lazy @Bean
 	public ITestBean lazyPassthroughBean() {
-		return new test.beans.TestBean("lazyPassthrough");
+		return new TestBean("lazyPassthrough");
 	}
 
 	@Bean
 	public ITestBean eagerPassthroughBean() {
-		return new test.beans.TestBean("eagerPassthrough");
+		return new TestBean("eagerPassthrough");
 	}
 
-	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-		this.beanFactory = (DefaultListableBeanFactory)beanFactory;
-	}
 }
 
 class DummySpecification implements FeatureSpecification {
@@ -165,3 +188,25 @@ class DummyExecutor implements SpecificationExecutor {
 	}
 
 }
+
+
+@Configuration
+class InvalidFeatureConfig {
+	@Feature
+	public FeatureSpecification feature() throws Throwable {
+		try {
+			// this will cause the exception as TestBean return type is not an interface
+			this.testBean();
+		} catch (ProxyCreationException ex) {
+			assertThat(ex.getMessage().startsWith("@Bean method"), is(true));
+			throw ex;
+		}
+		throw new AssertionError("should have thrown");
+	}
+
+	@Bean
+	public TestBean testBean() {
+		return new TestBean("invalid");
+	}
+}
+
