@@ -19,11 +19,11 @@ package org.springframework.context.annotation;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Proxy;
 
 import org.junit.Test;
 import org.springframework.beans.BeansException;
@@ -39,8 +39,9 @@ import test.beans.ITestBean;
 import test.beans.TestBean;
 
 /**
- * Tests that bean methods referenced from within Feature methods
- * get proxied early.
+ * Tests that @Bean methods referenced from within @Feature methods
+ * get proxied early to avoid premature instantiation of actual
+ * bean instances.
  *
  * @author Chris Beams
  * @since 3.1
@@ -56,7 +57,7 @@ public class FeatureMethodEarlyBeanProxyTests {
 		// see additional assertions in FeatureConfig#feature()
 		//
 
-		// sanity check that all the bean definitions we expect are present
+		// sanity check that all the bean definitions we expecting are present
 		assertThat(ctx.getBeanFactory().containsBeanDefinition("lazyHelperBean"), is(true));
 		assertThat(ctx.getBeanFactory().containsBeanDefinition("eagerHelperBean"), is(true));
 		assertThat(ctx.getBeanFactory().containsBeanDefinition("lazyPassthroughBean"), is(true));
@@ -77,10 +78,10 @@ public class FeatureMethodEarlyBeanProxyTests {
 
 
 		// now actually fetch all the beans. none should be proxies
-		assertThat(Proxy.isProxyClass(ctx.getBean("lazyHelperBean").getClass()), is(false));
-		assertThat(Proxy.isProxyClass(ctx.getBean("eagerHelperBean").getClass()), is(false));
-		assertThat(Proxy.isProxyClass(ctx.getBean("lazyPassthroughBean").getClass()), is(false));
-		assertThat(Proxy.isProxyClass(ctx.getBean("eagerPassthroughBean").getClass()), is(false));
+		assertThat(ctx.getBean("lazyHelperBean"), not(instanceOf(EarlyBeanReferenceProxy.class)));
+		assertThat(ctx.getBean("eagerHelperBean"), not(instanceOf(EarlyBeanReferenceProxy.class)));
+		assertThat(ctx.getBean("lazyPassthroughBean"), not(instanceOf(EarlyBeanReferenceProxy.class)));
+		assertThat(ctx.getBean("eagerPassthroughBean"), not(instanceOf(EarlyBeanReferenceProxy.class)));
 	}
 
 
@@ -115,10 +116,10 @@ class FeatureConfig implements BeanFactoryAware {
 		ITestBean lazyPassthroughBean = this.lazyPassthroughBean();
 		ITestBean eagerPassthroughBean = this.eagerPassthroughBean();
 
-		assertThat(Proxy.isProxyClass(lazyHelperBean.getClass()), is(true));
-		assertThat(Proxy.isProxyClass(eagerHelperBean.getClass()), is(true));
-		assertThat(Proxy.isProxyClass(lazyPassthroughBean.getClass()), is(true));
-		assertThat(Proxy.isProxyClass(eagerPassthroughBean.getClass()), is(true));
+		assertThat(lazyHelperBean, instanceOf(EarlyBeanReferenceProxy.class));
+		assertThat(eagerHelperBean, instanceOf(EarlyBeanReferenceProxy.class));
+		assertThat(lazyPassthroughBean, instanceOf(EarlyBeanReferenceProxy.class));
+		assertThat(eagerPassthroughBean, instanceOf(EarlyBeanReferenceProxy.class));
 
 		// but at this point, the proxy instances should not have
 		// been registered as singletons with the container.
@@ -194,14 +195,10 @@ class DummyExecutor implements SpecificationExecutor {
 class InvalidFeatureConfig {
 	@Feature
 	public FeatureSpecification feature() throws Throwable {
-		try {
-			// this will cause the exception as TestBean return type is not an interface
-			this.testBean();
-		} catch (ProxyCreationException ex) {
-			assertThat(ex.getMessage().startsWith("@Bean method"), is(true));
-			throw ex;
-		}
-		throw new AssertionError("should have thrown");
+		// reference a non-interface returning @Bean method
+		// this will throw ProxyCreationException
+		this.testBean();
+		return null; // will never be invoked
 	}
 
 	@Bean

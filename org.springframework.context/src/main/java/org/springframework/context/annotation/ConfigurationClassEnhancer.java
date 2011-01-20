@@ -178,28 +178,7 @@ class ConfigurationClassEnhancer {
 					final MethodProxy cglibMethodProxy) throws ProxyCreationException, Throwable {
 
 			if (this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies) {
-				final Class<?> returnType = beanMethod.getReturnType();
-				if (!returnType.isInterface()) {
-					throw new ProxyCreationException(String.format(
-							"@Bean method %s.%s() is referenced from within a @Feature method, therefore " +
-							"its return type must be an interface in order to allow for an early bean reference " +
-							"proxy to be created. Either modify the return type accordingly, or do not reference " +
-							"this bean method within @Feature methods.", beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName()));
-				}
-				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + beanMethod.getName());
-				Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {returnType}, new InvocationHandler() {
-					public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
-						if (targetMethod.getName().equals("toString")) {
-							return String.format("EarlyBeanReferenceProxy for %s object returned from @Bean method %s.%s()",
-									returnType.getSimpleName(), beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName());
-						}
-						earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = false;
-						Object actualBean = beanFactory.getBean(beanMethod.getName());
-						earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = true;
-						return targetMethod.invoke(actualBean, targetMethodArgs);
-					}
-				});
-				return proxiedBean;
+				return createEarlyBeanReferenceProxy(beanMethod);
 			}
 
 			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.doIntercept(): CREATING REAL BEAN for " + beanMethod.getName());
@@ -247,6 +226,31 @@ class ConfigurationClassEnhancer {
 			}
 
 			return cglibMethodProxy.invokeSuper(enhancedConfigInstance, beanMethodArgs);
+		}
+
+		private Object createEarlyBeanReferenceProxy(final Method beanMethod) throws ProxyCreationException {
+			final Class<?> returnType = beanMethod.getReturnType();
+			if (!returnType.isInterface()) {
+				throw new ProxyCreationException(String.format(
+						"@Bean method %s.%s() is referenced from within a @Feature method, therefore " +
+						"its return type must be an interface in order to allow for an early bean reference " +
+						"proxy to be created. Either modify the return type accordingly, or do not reference " +
+						"this bean method within @Feature methods.", beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName()));
+			}
+			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + beanMethod.getName());
+			Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {returnType,EarlyBeanReferenceProxy.class}, new InvocationHandler() {
+				public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
+					if (targetMethod.getName().equals("toString")) {
+						return String.format("EarlyBeanReferenceProxy for %s object returned from @Bean method %s.%s()",
+								returnType.getSimpleName(), beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName());
+					}
+					earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = false;
+					Object actualBean = beanFactory.getBean(beanMethod.getName());
+					earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = true;
+					return targetMethod.invoke(actualBean, targetMethodArgs);
+				}
+			});
+			return proxiedBean;
 		}
 
 		/**
