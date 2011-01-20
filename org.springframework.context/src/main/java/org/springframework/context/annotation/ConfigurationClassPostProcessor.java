@@ -107,6 +107,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 	private ConfigurationClassBeanDefinitionReader reader;
 
+	private EarlyBeanReferenceProxyStatus earlyBeanReferenceProxyStatus = new EarlyBeanReferenceProxyStatus();
+
 
 	/**
 	 * Set the {@link SourceExtractor} to use for generated bean definitions
@@ -198,7 +200,6 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 	private void processFeatureMethods(Set<Class<?>> configurationClasses, ConfigurableListableBeanFactory beanFactory) {
 		final Map<Class<?>, Set<Method>> featureMethodMap = new HashMap<Class<?>, Set<Method>>();
-		final Set<Method> featureMethods = new LinkedHashSet<Method>();
 		for (final Class<?> configClass : configurationClasses) {
 			ReflectionUtils.doWithMethods(configClass,
 					new ReflectionUtils.MethodCallback() {
@@ -207,19 +208,20 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 								featureMethodMap.put(configClass, new LinkedHashSet<Method>());
 							}
 							featureMethodMap.get(configClass).add(featureMethod);
-							featureMethods.add(featureMethod);
 						} },
 					new ReflectionUtils.MethodFilter() {
 						public boolean matches(Method candidateMethod) {
 							return candidateMethod.isAnnotationPresent(Feature.class);
 						} });
 		}
+		this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = true;
 		for (Class<?> configClass : featureMethodMap.keySet()) {
 			Object configInstance = beanFactory.getBean(configClass);
 			for (Method featureMethod : featureMethodMap.get(configClass)) {
 				processFeatureMethod(featureMethod, configInstance, beanFactory);
 			}
 		}
+		this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies = false;
 	}
 
 	/**
@@ -357,7 +359,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 					"Either add CGLIB to the classpath or remove the following @Configuration bean definitions: " +
 					configBeanDefs.keySet());
 		}
-		ConfigurationClassEnhancer enhancer = new ConfigurationClassEnhancer(beanFactory);
+		ConfigurationClassEnhancer enhancer = new ConfigurationClassEnhancer(beanFactory, this.earlyBeanReferenceProxyStatus);
 		for (Map.Entry<String, AbstractBeanDefinition> entry : configBeanDefs.entrySet()) {
 			AbstractBeanDefinition beanDef = entry.getValue();
 			try {

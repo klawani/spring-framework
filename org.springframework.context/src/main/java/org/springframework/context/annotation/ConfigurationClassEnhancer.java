@@ -60,10 +60,10 @@ class ConfigurationClassEnhancer {
 	/**
 	 * Creates a new {@link ConfigurationClassEnhancer} instance.
 	 */
-	public ConfigurationClassEnhancer(ConfigurableBeanFactory beanFactory) {
+	public ConfigurationClassEnhancer(ConfigurableBeanFactory beanFactory, EarlyBeanReferenceProxyStatus earlyBeanReferenceProxyStatus) {
 		Assert.notNull(beanFactory, "BeanFactory must not be null");
 
-		this.callbackInstances.add(new BeanMethodInterceptor(beanFactory));
+		this.callbackInstances.add(new BeanMethodInterceptor(beanFactory, earlyBeanReferenceProxyStatus));
 		this.callbackInstances.add(NoOp.INSTANCE);
 
 		for (Callback callback : this.callbackInstances) {
@@ -154,9 +154,11 @@ class ConfigurationClassEnhancer {
 	private static class BeanMethodInterceptor implements MethodInterceptor {
 
 		private final ConfigurableBeanFactory beanFactory;
+		private final EarlyBeanReferenceProxyStatus earlyBeanReferenceProxyStatus;
 
-		public BeanMethodInterceptor(ConfigurableBeanFactory beanFactory) {
+		public BeanMethodInterceptor(ConfigurableBeanFactory beanFactory, EarlyBeanReferenceProxyStatus earlyBeanReferenceProxyStatus) {
 			this.beanFactory = beanFactory;
+			this.earlyBeanReferenceProxyStatus = earlyBeanReferenceProxyStatus;
 		}
 
 		/**
@@ -164,6 +166,12 @@ class ConfigurationClassEnhancer {
 		 * existence of this bean object.
 		 */
 		public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
+			if (this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies) {
+				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + method.getName());
+			}
+			else {
+				System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING REAL BEAN for " + method.getName());
+			}
 			// by default the bean name is the name of the @Bean-annotated method
 			String beanName = method.getName();
 
