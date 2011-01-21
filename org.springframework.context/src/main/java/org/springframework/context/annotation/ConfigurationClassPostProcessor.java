@@ -16,6 +16,8 @@
 
 package org.springframework.context.annotation;
 
+import static java.lang.String.format;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -249,6 +251,10 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 			FeatureSpecification spec;
 			featureMethod.setAccessible(true);
 			spec = (FeatureSpecification) featureMethod.invoke(configInstance);
+
+			Assert.notNull(spec,
+					format("The specification returned from @Feature method %s.%s() must not be null",
+							featureMethod.getDeclaringClass().getSimpleName(), featureMethod.getName()));
 
 			SpecificationExecutor executor = BeanUtils.instantiateClass(spec.getExecutorType());
 
