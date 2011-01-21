@@ -174,14 +174,12 @@ class ConfigurationClassEnhancer {
 		 * invoking the super implementation of the proxied method i.e., the actual
 		 * {@code @Bean} method.
 		 */
-		public Object intercept(final Object enhancedConfigInstance, final Method beanMethod, final Object[] beanMethodArgs,
-					final MethodProxy cglibMethodProxy) throws ProxyCreationException, Throwable {
+		public Object intercept(Object enhancedConfigInstance, Method beanMethod, Object[] beanMethodArgs,
+					MethodProxy cglibMethodProxy) throws ProxyCreationException, Throwable {
 
 			if (this.earlyBeanReferenceProxyStatus.createEarlyBeanReferenceProxies) {
 				return createEarlyBeanReferenceProxy(beanMethod);
 			}
-
-			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.doIntercept(): CREATING REAL BEAN for " + beanMethod.getName());
 
 			// by default the bean name is the name of the @Bean-annotated method
 			String beanName = beanMethod.getName();
@@ -237,7 +235,6 @@ class ConfigurationClassEnhancer {
 						"proxy to be created. Either modify the return type accordingly, or do not reference " +
 						"this bean method within @Feature methods.", beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName()));
 			}
-			System.out.println("ConfigurationClassEnhancer.BeanMethodInterceptor.intercept(): CREATING EARLY PROXY for " + beanMethod.getName());
 			Object proxiedBean = Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {returnType,EarlyBeanReferenceProxy.class}, new InvocationHandler() {
 				public Object invoke(Object proxiedBean, Method targetMethod, Object[] targetMethodArgs) throws Throwable {
 					if (targetMethod.getName().equals("toString")) {

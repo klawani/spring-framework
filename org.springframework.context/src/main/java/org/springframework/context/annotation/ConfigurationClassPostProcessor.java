@@ -188,9 +188,11 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 			// Simply call processConfigClasses lazily at this point then.
 			processConfigClasses((BeanDefinitionRegistry)beanFactory);
 		}
-		System.out.println("ConfigurationClassPostProcessor.postProcessBeanFactory()");
 	}
 
+	/**
+	 * Find and process all @Configuration classes with @Feature methods in the given registry.
+	 */
 	private void processConfigClasses(BeanDefinitionRegistry registry) {
 		ConfigurationClassBeanDefinitionReader reader = getConfigurationClassBeanDefinitionReader(registry);
 		processConfigBeanDefinitions(registry, reader);
@@ -198,6 +200,9 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 		processFeatureMethods(enhancedConfigClasses, (ConfigurableListableBeanFactory)registry);
 	}
 
+	/**
+	 * Process any @Feature methods in the given set of configurationClasses.
+	 */
 	private void processFeatureMethods(Set<Class<?>> configurationClasses, ConfigurableListableBeanFactory beanFactory) {
 		final Map<Class<?>, Set<Method>> featureMethodMap = new HashMap<Class<?>, Set<Method>>();
 		for (final Class<?> configClass : configurationClasses) {
