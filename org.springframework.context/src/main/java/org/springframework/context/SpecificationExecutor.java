@@ -33,11 +33,6 @@ package org.springframework.context;
 public interface SpecificationExecutor {
 
 	/**
-	 * Return whether this executor is capable of executing the given specification.
-	 */
-	boolean accepts(FeatureSpecification spec);
-
-	/**
 	 * Execute the given specification, usually resulting in registration
 	 * of bean definitions against a bean factory.
 	 */

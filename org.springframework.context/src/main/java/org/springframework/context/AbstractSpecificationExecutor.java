@@ -27,11 +27,6 @@ import org.springframework.util.Assert;
  */
 public abstract class AbstractSpecificationExecutor<S extends FeatureSpecification> implements SpecificationExecutor {
 
-	public boolean accepts(FeatureSpecification spec) {
-		Class<?> typeArg = GenericTypeResolver.resolveTypeArgument(this.getClass(), AbstractSpecificationExecutor.class);
-		return typeArg.equals(spec.getClass());
-	}
-
 	/**
 	 * {@inheritDoc}
 	 * <p>This implementation {@linkplain FeatureSpecification#validate() validates} the
@@ -43,7 +38,8 @@ public abstract class AbstractSpecificationExecutor<S extends FeatureSpecificati
 	public final void execute(FeatureSpecification spec, ExecutorContext executorContext) throws InvalidSpecificationException {
 		Assert.notNull(spec, "Specification must not be null");
 		Assert.notNull(spec, "ExecutorContext must not be null");
-		Assert.isTrue(this.accepts(spec), "Specification cannot be executed by this executor");
+		Class<?> typeArg = GenericTypeResolver.resolveTypeArgument(this.getClass(), AbstractSpecificationExecutor.class);
+		Assert.isTrue(typeArg.equals(spec.getClass()), "Specification cannot be executed by this executor");
 		spec.validate();
 		doExecute((S)spec, executorContext);
 	}
